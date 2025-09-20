@@ -9,9 +9,11 @@ A revolutionary Chrome extension that provides screenshot-based tooltips for any
 - **Local Storage**: All screenshots stored locally in your browser (IndexedDB)
 - **Privacy-First**: No data sent to external servers (when using localhost service)
 - **Smart Caching**: Intelligent caching system with automatic cleanup
-- **Beautiful UI**: Modern, draggable, resizable tooltips with dark theme
+- **Beautiful UI**: Modern, draggable, resizable tooltips with glassmorphism theme
 - **High Performance**: Supports up to 50 concurrent screenshot requests
 - **Auto-Detection**: Automatically detects and analyzes clickable elements
+- **Service Status Monitoring**: Real-time status of local Playwright service
+- **Fallback Support**: Graceful fallback to chrome.tabs API when service unavailable
 
 ## 🏗️ Architecture
 

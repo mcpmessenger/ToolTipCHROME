@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple ToolTip Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 50px;
+            background: #f0f0f0;
+        }
+        
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 20px;
+            font-size: 16px;
+        }
+        
+        .test-link {
+            color: #007bff;
+            text-decoration: none;
+            font-size: 18px;
+            margin: 20px;
+            display: inline-block;
+        }
+        
+        .test-input {
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            margin: 20px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Simple ToolTip Test Page</h1>
+    
+    <p>This is a simple test page to verify ToolTip Companion is working.</p>
+    
+    <h2>Test Elements:</h2>
+    
+    <button class="test-button" onclick="alert('Button clicked!')">Test Button</button>
+    
+    <a href="https://www.google.com" class="test-link" target="_blank">Test Link to Google</a>
+    
+    <input type="text" class="test-input" placeholder="Test Input Field">
+    
+    <h2>Instructions:</h2>
+    <ol>
+        <li>Make sure the ToolTip Companion extension is enabled</li>
+        <li>Hover over the button, link, or input field above</li>
+        <li>You should see tooltips appear with screenshots</li>
+        <li>Try dragging the tooltips around the page</li>
+        <li>Check the browser console (F12) for any error messages</li>
+    </ol>
+    
+    <h2>Console Logs:</h2>
+    <p>Open the browser console (F12) to see debug information about the ToolTip extension.</p>
+    
+    <script>
+        console.log('Simple test page loaded');
+        console.log('Looking for ToolTip Companion content script...');
+        
+        // Check if ToolTip container exists
+        setTimeout(() => {
+            const container = document.getElementById('tooltip-companion-container');
+            if (container) {
+                console.log('✅ ToolTip container found:', container);
+            } else {
+                console.log('❌ ToolTip container not found - extension may not be loaded');
+            }
+        }, 2000);
+    </script>
+</body>
+</html>

@@ -10,18 +10,25 @@ class ToolTipContentScript {
     this.currentTooltip = null;
     this.isProcessing = false; // Prevent multiple simultaneous operations
     this.tooltipQueue = []; // Queue for tooltip operations
+    this.isDragging = false; // Track if tooltip is being dragged
     
     this.init();
   }
 
   async init() {
+    console.log('ToolTip Content Script initializing...');
+    
     // Load settings
     await this.loadSettings();
+    console.log('Settings loaded:', this.settings);
     
     // Only proceed if extension is enabled
     if (!this.settings.enabled) {
+      console.log('ToolTip extension is disabled');
       return;
     }
+
+    console.log('ToolTip extension is enabled, initializing...');
 
     // Initialize tooltip system
     this.initializeTooltipSystem();
@@ -31,6 +38,8 @@ class ToolTipContentScript {
     
     // Listen for settings changes
     this.setupSettingsListener();
+    
+    console.log('ToolTip Content Script initialized successfully');
   }
 
   async loadSettings() {
@@ -39,6 +48,17 @@ class ToolTipContentScript {
         if (response?.success) {
           this.settings = response.data;
           this.isEnabled = this.settings.enabled;
+          console.log('Settings loaded successfully:', this.settings);
+        } else {
+          console.error('Failed to load settings:', response?.error);
+          // Use default settings if loading fails
+          this.settings = {
+            enabled: true,
+            triggerEvent: 'hover',
+            delay: 500,
+            localScreenshots: { enabled: true }
+          };
+          this.isEnabled = true;
         }
         resolve();
       });
@@ -57,6 +77,216 @@ class ToolTipContentScript {
           this.stopObserving();
           this.hideTooltip();
         }
+      } else if (request.action === 'testTooltips') {
+        this.testTooltips();
+        sendResponse({ success: true });
+      } else if (request.action === 'createDraggablePanel') {
+        this.createDraggablePanel();
+        sendResponse({ success: true });
+      }
+    });
+  }
+
+  testTooltips() {
+    console.log('🧪 ToolTip Test Started');
+    console.log('Settings:', this.settings);
+    console.log('Is Enabled:', this.isEnabled);
+    console.log('Observed Elements Count:', this.observedElements.size);
+    
+    // Find some interactive elements to test
+    const testElements = document.querySelectorAll('button, a[href], input, select, textarea');
+    console.log('Found interactive elements:', testElements.length);
+    
+    if (testElements.length > 0) {
+      console.log('Testing tooltip on first element:', testElements[0]);
+      this.showTooltipForElement(testElements[0]);
+    } else {
+      console.log('No interactive elements found to test');
+    }
+  }
+
+  createDraggablePanel() {
+    console.log('🪟 Creating draggable settings panel...');
+    
+    // Remove existing panel if it exists
+    const existingPanel = document.getElementById('tooltip-draggable-panel');
+    if (existingPanel) {
+      existingPanel.remove();
+    }
+    
+    // Create the draggable panel
+    const panel = document.createElement('div');
+    panel.id = 'tooltip-draggable-panel';
+    panel.style.cssText = `
+      position: fixed;
+      top: 100px;
+      right: 100px;
+      width: 400px;
+      min-height: 500px;
+      background: linear-gradient(135deg, 
+        rgba(80, 80, 80, 0.95) 0%, 
+        rgba(60, 60, 60, 0.9) 50%, 
+        rgba(40, 40, 40, 0.95) 100%);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      color: #f0f0f0;
+      border-radius: 24px;
+      box-shadow: 
+        0 25px 50px rgba(0, 0, 0, 0.4),
+        0 12px 24px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      z-index: 2147483647;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      cursor: grab;
+      user-select: none;
+    `;
+    
+    // Create header
+    const header = document.createElement('div');
+    header.style.cssText = `
+      padding: 20px;
+      text-align: center;
+      background: rgba(80, 80, 80, 0.3);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(120, 120, 120, 0.3);
+      border-radius: 22px 22px 0 0;
+      cursor: grab;
+    `;
+    
+    header.innerHTML = `
+      <div style="position: absolute; top: 8px; left: 50%; transform: translateX(-50%); width: 40px; height: 6px; background: rgba(255, 255, 255, 0.4); border-radius: 3px; opacity: 0.7;"></div>
+      <h1 style="font-size: 18px; font-weight: 600; margin-bottom: 5px;">ToolTip Companion</h1>
+      <p style="font-size: 12px; opacity: 0.8;">Draggable Settings Panel</p>
+      <div style="display: inline-flex; align-items: center; gap: 4px; background: rgba(76, 175, 80, 0.2); border: 1px solid rgba(76, 175, 80, 0.5); padding: 4px 8px; border-radius: 12px; font-size: 10px; margin-top: 8px;">
+        <span>🔒</span>
+        <span>Privacy-First Local Storage</span>
+      </div>
+    `;
+    
+    // Create content area
+    const content = document.createElement('div');
+    content.style.cssText = `
+      padding: 20px;
+      max-height: 400px;
+      overflow-y: auto;
+    `;
+    
+    content.innerHTML = `
+      <div style="background: rgba(76, 175, 80, 0.2); border: 1px solid rgba(76, 175, 80, 0.5); padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: center;">
+        <strong>✅ ToolTip Companion is active with local screenshots</strong>
+      </div>
+      
+      <div style="background: rgba(60, 60, 60, 0.3); border: 1px solid rgba(120, 120, 120, 0.3); border-radius: 8px; padding: 12px; margin-bottom: 15px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: 13px; font-weight: 500;">
+          <span>🔧 Local Service Status</span>
+          <button style="background: rgba(120, 120, 120, 0.4); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 4px; color: #e8e8e8; font-size: 12px; padding: 4px 8px; cursor: pointer;">🔄</button>
+        </div>
+        <div style="font-size: 12px; opacity: 0.8;">✅ ToolTip Screenshot Service is running</div>
+      </div>
+      
+      <div style="margin-bottom: 20px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+          <span style="font-size: 14px; font-weight: 500;">Enable ToolTip Companion</span>
+          <div style="position: relative; display: inline-block; width: 50px; height: 24px;">
+            <input type="checkbox" checked style="opacity: 0; width: 0; height: 0;">
+            <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #70a070; transition: 0.3s; border-radius: 24px;"></span>
+            <span style="position: absolute; content: ''; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: 0.3s; border-radius: 50%; transform: translateX(26px);"></span>
+          </div>
+        </div>
+      </div>
+      
+      <button style="width: 100%; padding: 12px 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; color: white; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.3s ease; margin-bottom: 10px;">
+        🧪 Test Tooltips - Check Console
+      </button>
+      
+      <button style="width: 100%; padding: 12px 16px; background: linear-gradient(135deg, #28a745 0%, #20c997 100%); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; color: white; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.3s ease;">
+        🔍 Fresh Crawl - Scan Entire Page
+      </button>
+    `;
+    
+    // Create close button
+    const closeBtn = document.createElement('button');
+    closeBtn.style.cssText = `
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      background: rgba(244, 67, 54, 0.8);
+      border: none;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+    `;
+    closeBtn.innerHTML = '×';
+    
+    // Assemble panel
+    panel.appendChild(closeBtn);
+    panel.appendChild(header);
+    panel.appendChild(content);
+    
+    // Add drag functionality
+    this.setupPanelDragging(panel);
+    
+    // Add close functionality
+    closeBtn.addEventListener('click', () => {
+      panel.remove();
+    });
+    
+    // Add to page
+    document.body.appendChild(panel);
+    
+    console.log('✅ Draggable settings panel created');
+  }
+
+  setupPanelDragging(panel) {
+    let isDragging = false;
+    let dragOffset = { x: 0, y: 0 };
+    
+    panel.addEventListener('mousedown', (e) => {
+      if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') {
+        return; // Don't drag when clicking buttons or inputs
+      }
+      
+      isDragging = true;
+      const rect = panel.getBoundingClientRect();
+      dragOffset.x = e.clientX - rect.left;
+      dragOffset.y = e.clientY - rect.top;
+      
+      panel.style.cursor = 'grabbing';
+      panel.style.zIndex = '2147483648';
+      e.preventDefault();
+    });
+    
+    document.addEventListener('mousemove', (e) => {
+      if (isDragging) {
+        const newX = e.clientX - dragOffset.x;
+        const newY = e.clientY - dragOffset.y;
+        
+        // Keep panel within viewport bounds
+        const maxX = window.innerWidth - panel.offsetWidth;
+        const maxY = window.innerHeight - panel.offsetHeight;
+        
+        panel.style.left = Math.max(0, Math.min(newX, maxX)) + 'px';
+        panel.style.top = Math.max(0, Math.min(newY, maxY)) + 'px';
+        panel.style.right = 'auto';
+        
+        e.preventDefault();
+      }
+    });
+    
+    document.addEventListener('mouseup', (e) => {
+      if (isDragging) {
+        isDragging = false;
+        panel.style.cursor = 'grab';
+        panel.style.zIndex = '2147483647';
       }
     });
   }
@@ -215,21 +445,51 @@ class ToolTipContentScript {
   }
 
   handleElementEnter(event) {
-    if (this.hoverTimeout) {
-      clearTimeout(this.hoverTimeout);
-    }
-
-    this.hoverTimeout = setTimeout(() => {
-      this.showTooltipForElement(event.target);
-    }, this.settings.delay || 500);
-  }
-
-  handleElementLeave(event) {
+    const element = event.target;
+    
+    // Clear any existing timeout
     if (this.hoverTimeout) {
       clearTimeout(this.hoverTimeout);
       this.hoverTimeout = null;
     }
-    this.hideTooltip();
+
+    // Don't show tooltip if we're already processing one for the same element
+    if (this.isProcessing && this.currentTooltip && 
+        this.currentTooltip.dataset.elementId === (element.id || element.className || 'unknown')) {
+      return;
+    }
+
+    // Set timeout to show tooltip
+    this.hoverTimeout = setTimeout(() => {
+      // Only show if we're still hovering over the same element
+      if (!this.isProcessing || 
+          !this.currentTooltip || 
+          this.currentTooltip.dataset.elementId !== (element.id || element.className || 'unknown')) {
+        this.showTooltipForElement(element);
+      }
+    }, this.settings.delay || 500);
+  }
+
+  handleElementLeave(event) {
+    const element = event.target;
+    
+    // Clear timeout
+    if (this.hoverTimeout) {
+      clearTimeout(this.hoverTimeout);
+      this.hoverTimeout = null;
+    }
+    
+    // Only hide tooltip if it's for this specific element and we're not dragging
+    if (this.currentTooltip && 
+        this.currentTooltip.dataset.elementId === (element.id || element.className || 'unknown') &&
+        !this.isDragging) {
+      // Add a small delay to prevent flashing when moving between elements
+      setTimeout(() => {
+        if (!this.isProcessing && !this.isDragging) {
+          this.hideTooltip();
+        }
+      }, 100);
+    }
   }
 
   async handleElementClick(event) {
@@ -258,14 +518,7 @@ class ToolTipContentScript {
         return;
       }
       
-      // Show loading tooltip immediately
-      this.showTooltip(linkElement, {
-        content: 'Capturing screenshot...',
-        loading: true,
-        linkPreview: true
-      });
-
-      // Get link data
+      // Get link data first
       const linkData = {
         url: linkElement.href,
         title: linkElement.textContent?.trim() || linkElement.title || '',
@@ -275,11 +528,11 @@ class ToolTipContentScript {
       // Request screenshot capture from background script
       const preview = await this.captureLinkPreview(linkData);
       
-      if (preview && preview.success && preview.metadata) {
-        // Show tooltip with screenshot
+      if (preview && preview.success && preview.screenshot) {
+        // Show tooltip with screenshot immediately
         this.showTooltip(linkElement, {
-          content: preview.metadata.title || linkData.title,
-          description: preview.metadata.description || '',
+          content: preview.metadata?.title || linkData.title || 'Link Preview',
+          description: preview.metadata?.description || `Opens: ${linkData.url}`,
           screenshot: preview.screenshot,
           metadata: preview.metadata,
           linkPreview: true,
@@ -287,6 +540,13 @@ class ToolTipContentScript {
           cached: preview.cached || false
         });
       } else {
+        // Show loading tooltip only if screenshot fails
+        this.showTooltip(linkElement, {
+          content: 'Capturing screenshot...',
+          loading: true,
+          linkPreview: true
+        });
+        
         // Fallback to regular tooltip
         this.showTooltip(linkElement, {
           content: `Link: ${linkData.title || linkData.url}`,
@@ -315,13 +575,7 @@ class ToolTipContentScript {
 
   async showTooltipForElement(element) {
     try {
-      // Show loading tooltip immediately
-      this.showTooltip(element, {
-        content: 'Capturing screenshot...',
-        loading: true
-      });
-
-      // Extract element data
+      // Extract element data first
       const elementData = this.extractElementData(element);
       
       // Try Playwright screenshot capture first
@@ -329,7 +583,7 @@ class ToolTipContentScript {
         const screenshotResult = await this.captureScreenshotWithPlaywright(elementData);
         
         if (screenshotResult && screenshotResult.success) {
-          // Show tooltip with screenshot
+          // Show tooltip with screenshot immediately
           this.showTooltip(element, {
             content: screenshotResult.metadata?.title || elementData.text || 'Interactive element',
             description: screenshotResult.metadata?.description || '',
@@ -345,6 +599,12 @@ class ToolTipContentScript {
       } catch (screenshotError) {
         console.log('Playwright screenshot failed, falling back to analysis:', screenshotError.message);
       }
+
+      // Show loading tooltip only if screenshot fails
+      this.showTooltip(element, {
+        content: 'Analyzing element...',
+        loading: true
+      });
 
       // Fallback to traditional analysis if screenshot fails
       const analysis = await this.analyzeElement(elementData);
@@ -369,12 +629,24 @@ class ToolTipContentScript {
   }
 
   showTooltip(element, data) {
-    // Always hide existing tooltip first
-    this.hideTooltip();
-    
     // Prevent multiple simultaneous tooltip operations
     if (this.isProcessing) {
+      // Don't queue if it's the same element to prevent flashing
+      if (this.tooltipQueue.length > 0 && 
+          this.tooltipQueue[this.tooltipQueue.length - 1].element === element) {
+        return;
+      }
       this.tooltipQueue.push({ element, data });
+      return;
+    }
+    
+    // Don't hide existing tooltip if it's for the same element
+    const elementId = element.id || element.className || 'unknown';
+    if (this.currentTooltip && this.currentTooltip.dataset.elementId !== elementId) {
+      this.hideTooltip();
+    } else if (this.currentTooltip && this.currentTooltip.dataset.elementId === elementId) {
+      // Update existing tooltip content instead of creating new one
+      this.updateTooltipContent(this.currentTooltip, data);
       return;
     }
     
@@ -389,6 +661,7 @@ class ToolTipContentScript {
 
     const tooltip = document.createElement('div');
     tooltip.className = 'tooltip-companion-tooltip';
+    tooltip.dataset.elementId = element.id || element.className || 'unknown';
     
     // Calculate position
     const rect = element.getBoundingClientRect();
@@ -398,7 +671,8 @@ class ToolTipContentScript {
       position: absolute;
       left: ${position.x}px;
       top: ${position.y}px;
-      width: 280px;
+      width: 320px;
+      height: auto;
       opacity: 0;
       transform: translateY(5px);
       transition: opacity 0.2s ease, transform 0.2s ease;
@@ -473,24 +747,11 @@ class ToolTipContentScript {
       if (data.screenshot) {
         const screenshotDiv = document.createElement('div');
         screenshotDiv.className = 'tooltip-companion-screenshot';
-        screenshotDiv.style.cssText = `
-          margin-top: 12px;
-          border-radius: 8px;
-          overflow: hidden;
-          position: relative;
-        `;
         
         const img = document.createElement('img');
         img.src = data.screenshot;
-        img.alt = 'Link preview';
-        img.style.cssText = `
-          width: 100%;
-          height: auto;
-          max-height: 200px;
-          object-fit: cover;
-          border-radius: 8px;
-          cursor: pointer;
-        `;
+        img.alt = data.metadata?.title || 'Screenshot preview';
+        img.title = 'Click to view full size';
         
         // Handle image loading errors
         img.addEventListener('error', () => {
@@ -498,34 +759,97 @@ class ToolTipContentScript {
           screenshotDiv.style.display = 'none';
         });
         
-        // Make screenshot clickable to open link
+        // Make screenshot clickable to open link or show full size
         if (data.metadata && data.metadata.url) {
           img.addEventListener('click', () => {
             window.open(data.metadata.url, '_blank');
           });
-          img.title = 'Click to open link';
+          img.style.cursor = 'pointer';
+        } else {
+          img.addEventListener('click', () => {
+            // Open image in new tab for full size view
+            const newWindow = window.open();
+            newWindow.document.write(`
+              <html>
+                <head><title>Screenshot Preview</title></head>
+                <body style="margin:0; background:#000; display:flex; justify-content:center; align-items:center; min-height:100vh;">
+                  <img src="${data.screenshot}" style="max-width:100%; max-height:100%; object-fit:contain;" />
+                </body>
+              </html>
+            `);
+          });
+          img.style.cursor = 'zoom-in';
         }
         
-        // Add cached indicator if screenshot was cached
+        // Add status indicators
+        const statusContainer = document.createElement('div');
+        statusContainer.style.cssText = `
+          position: absolute;
+          top: 8px;
+          right: 8px;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          pointer-events: none;
+        `;
+        
+        // Cached indicator
         if (data.cached) {
           const cachedIndicator = document.createElement('div');
           cachedIndicator.style.cssText = `
-            position: absolute;
-            top: 4px;
-            right: 4px;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(76, 175, 80, 0.9);
             color: white;
             font-size: 10px;
-            padding: 2px 6px;
-            border-radius: 4px;
-            pointer-events: none;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-weight: 500;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
           `;
           cachedIndicator.textContent = 'Cached';
-          screenshotDiv.appendChild(cachedIndicator);
+          statusContainer.appendChild(cachedIndicator);
+        }
+        
+        // Source indicator
+        if (data.source) {
+          const sourceIndicator = document.createElement('div');
+          sourceIndicator.style.cssText = `
+            background: rgba(33, 150, 243, 0.9);
+            color: white;
+            font-size: 10px;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-weight: 500;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+          `;
+          sourceIndicator.textContent = data.source === 'playwright' ? 'Playwright' : 'Chrome';
+          statusContainer.appendChild(sourceIndicator);
         }
         
         screenshotDiv.appendChild(img);
+        screenshotDiv.appendChild(statusContainer);
         content.appendChild(screenshotDiv);
+        
+        // Add metadata info below screenshot
+        if (data.metadata) {
+          const metaDiv = document.createElement('div');
+          metaDiv.style.cssText = `
+            margin-top: 8px;
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            font-size: 12px;
+            color: #d0d0d0;
+            border-left: 3px solid rgba(255, 255, 255, 0.3);
+          `;
+          
+          const metaInfo = [];
+          if (data.metadata.title) metaInfo.push(`Title: ${data.metadata.title}`);
+          if (data.metadata.description) metaInfo.push(`Description: ${data.metadata.description.substring(0, 100)}...`);
+          if (data.timestamp) metaInfo.push(`Captured: ${new Date(data.timestamp).toLocaleString()}`);
+          
+          metaDiv.textContent = metaInfo.join(' • ');
+          content.appendChild(metaDiv);
+        }
       }
       
       // Add metadata if available
@@ -564,25 +888,26 @@ class ToolTipContentScript {
     tooltip.appendChild(header);
     tooltip.appendChild(content);
     
-    // Add interactive features if enabled
-    if (this.settings.interactiveTooltips !== false) {
-      // Add resize handles
-      this.addResizeHandles(tooltip);
-      
-      // Add event listeners
-      this.addTooltipEventListeners(tooltip, header, collapseBtn, closeBtn);
-    } else {
-      // Simple close button only
-      closeBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        this.hideTooltip();
-      });
-      
-      // Remove drag functionality from header
-      header.style.cursor = 'default';
-      collapseBtn.style.display = 'none';
-    }
+    // Make tooltips draggable anywhere on the page using injected script
+    this.setupTooltipDragging(tooltip);
+    
+    // Close button
+    closeBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.hideTooltip();
+    });
+    
+    // Collapse button
+    collapseBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.toggleCollapse(tooltip, collapseBtn);
+    });
+    
+    // Make header draggable
+    header.style.cursor = 'grab';
+    collapseBtn.style.display = 'flex';
 
     container.appendChild(tooltip);
     this.currentTooltip = tooltip;
@@ -606,9 +931,9 @@ class ToolTipContentScript {
   }
 
   calculateTooltipPosition(elementRect) {
-    const tooltipWidth = 280; // initial width
-    const tooltipHeight = 80; // estimated height
-    const margin = 10;
+    const tooltipWidth = 320; // increased width for better content display
+    const tooltipHeight = 120; // increased height for screenshots
+    const margin = 15;
 
     let x = elementRect.left + elementRect.width / 2 - tooltipWidth / 2;
     let y = elementRect.top - tooltipHeight - margin;
@@ -623,94 +948,17 @@ class ToolTipContentScript {
       y = elementRect.bottom + margin; // Show below if no space above
     }
 
+    // Ensure tooltip stays within viewport
+    if (y + tooltipHeight > window.innerHeight + window.scrollY - margin) {
+      y = window.innerHeight + window.scrollY - tooltipHeight - margin;
+    }
+
     return { x: x + window.scrollX, y: y + window.scrollY };
   }
 
-  addResizeHandles(tooltip) {
-    const handles = ['nw', 'ne', 'sw', 'se', 'n', 's', 'w', 'e'];
-    
-    handles.forEach(direction => {
-      const handle = document.createElement('div');
-      handle.className = `tooltip-companion-resize-handle ${direction}`;
-      tooltip.appendChild(handle);
-      
-      handle.addEventListener('mousedown', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        this.startResize(tooltip, direction, e);
-      });
-    });
-  }
+  // Resize handles removed - tooltips are now stationary
 
-  addTooltipEventListeners(tooltip, header, collapseBtn, closeBtn) {
-    let isDragging = false;
-    let dragStart = { x: 0, y: 0, left: 0, top: 0 };
-    
-    // Drag functionality
-    header.addEventListener('mousedown', (e) => {
-      if (e.target.closest('.tooltip-companion-btn')) return;
-      
-      isDragging = true;
-      tooltip.classList.add('dragging');
-      
-      dragStart = {
-        x: e.clientX,
-        y: e.clientY,
-        left: parseInt(tooltip.style.left),
-        top: parseInt(tooltip.style.top)
-      };
-      
-      e.preventDefault();
-    });
-    
-    // Collapse/Expand functionality
-    collapseBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      this.toggleCollapse(tooltip, collapseBtn);
-    });
-    
-    // Close functionality
-    closeBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      this.hideTooltip();
-    });
-    
-    // Global mouse events for dragging
-    const handleMouseMove = (e) => {
-      if (!isDragging) return;
-      
-      const deltaX = e.clientX - dragStart.x;
-      const deltaY = e.clientY - dragStart.y;
-      
-      const newLeft = dragStart.left + deltaX;
-      const newTop = dragStart.top + deltaY;
-      
-      // Constrain to viewport
-      const maxLeft = window.innerWidth - tooltip.offsetWidth;
-      const maxTop = window.innerHeight - tooltip.offsetHeight;
-      
-      tooltip.style.left = Math.max(0, Math.min(newLeft, maxLeft)) + 'px';
-      tooltip.style.top = Math.max(0, Math.min(newTop, maxTop)) + 'px';
-    };
-    
-    const handleMouseUp = () => {
-      if (isDragging) {
-        isDragging = false;
-        tooltip.classList.remove('dragging');
-      }
-    };
-    
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-    
-    // Store cleanup function
-    tooltip._cleanup = () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }
+  // Tooltip event listeners removed - tooltips are now stationary
 
   toggleCollapse(tooltip, collapseBtn) {
     const isCollapsed = tooltip.classList.contains('collapsed');
@@ -726,70 +974,127 @@ class ToolTipContentScript {
     }
   }
 
-  startResize(tooltip, direction, e) {
-    const startX = e.clientX;
-    const startY = e.clientY;
-    const startWidth = tooltip.offsetWidth;
-    const startHeight = tooltip.offsetHeight;
-    const startLeft = parseInt(tooltip.style.left);
-    const startTop = parseInt(tooltip.style.top);
+  // Resize functionality removed - tooltips are now stationary
+
+  updateTooltipContent(tooltip, data) {
+    // Update tooltip content without recreating the entire tooltip
+    const content = tooltip.querySelector('.tooltip-companion-content');
+    if (!content) return;
     
-    tooltip.classList.add('resizing');
+    if (data.loading) {
+      content.className = 'tooltip-companion-content loading';
+      content.innerHTML = `
+        <div class="tooltip-companion-loading">
+          <span>${data.linkPreview ? 'Capturing screenshot...' : 'Analyzing...'}</span>
+          <div class="tooltip-companion-spinner"></div>
+        </div>
+      `;
+    } else if (data.error) {
+      content.className = 'tooltip-companion-content error';
+      content.textContent = data.content;
+    } else {
+      content.className = 'tooltip-companion-content';
+      content.innerHTML = '';
+      
+      // Main content
+      const mainText = document.createElement('div');
+      mainText.textContent = data.content;
+      content.appendChild(mainText);
+
+      // Add description if available
+      if (data.description) {
+        const desc = document.createElement('div');
+        desc.style.cssText = `
+          margin-top: 8px;
+          font-size: 13px;
+          opacity: 0.8;
+          color: #d0d0d0;
+          line-height: 1.4;
+        `;
+        desc.textContent = data.description;
+        content.appendChild(desc);
+      }
+
+      // Add screenshot if available
+      if (data.screenshot) {
+        const screenshotDiv = document.createElement('div');
+        screenshotDiv.className = 'tooltip-companion-screenshot';
+        
+        const img = document.createElement('img');
+        img.src = data.screenshot;
+        img.alt = data.metadata?.title || 'Screenshot preview';
+        img.title = 'Click to view full size';
+        
+        // Handle image loading errors
+        img.addEventListener('error', () => {
+          console.log('Screenshot failed to load:', data.screenshot);
+          screenshotDiv.style.display = 'none';
+        });
+        
+        screenshotDiv.appendChild(img);
+        content.appendChild(screenshotDiv);
+      }
+    }
+  }
+
+  setupTooltipDragging(tooltip) {
+    // Simple drag functionality that works within the content script context
+    let isDragging = false;
+    let dragOffset = { x: 0, y: 0 };
     
-    const handleMouseMove = (e) => {
-      const deltaX = e.clientX - startX;
-      const deltaY = e.clientY - startY;
-      
-      let newWidth = startWidth;
-      let newHeight = startHeight;
-      let newLeft = startLeft;
-      let newTop = startTop;
-      
-      // Calculate new dimensions based on resize direction
-      if (direction.includes('e')) newWidth = startWidth + deltaX;
-      if (direction.includes('w')) {
-        newWidth = startWidth - deltaX;
-        newLeft = startLeft + deltaX;
-      }
-      if (direction.includes('s')) newHeight = startHeight + deltaY;
-      if (direction.includes('n')) {
-        newHeight = startHeight - deltaY;
-        newTop = startTop + deltaY;
+    tooltip.addEventListener('mousedown', (e) => {
+      // Don't start drag if clicking on buttons or interactive elements
+      if (e.target.classList.contains('tooltip-companion-btn') || 
+          e.target.tagName === 'BUTTON' || 
+          e.target.tagName === 'IMG') {
+        return;
       }
       
-      // Apply constraints
-      newWidth = Math.max(200, Math.min(newWidth, 600));
-      newHeight = Math.max(40, Math.min(newHeight, 400));
+      isDragging = true;
+      this.isDragging = true;
+      const rect = tooltip.getBoundingClientRect();
+      dragOffset.x = e.clientX - rect.left;
+      dragOffset.y = e.clientY - rect.top;
       
-      // Update tooltip
-      tooltip.style.width = newWidth + 'px';
-      tooltip.style.height = newHeight + 'px';
-      
-      if (direction.includes('w')) {
-        tooltip.style.left = (startLeft + startWidth - newWidth) + 'px';
-      }
-      if (direction.includes('n')) {
-        tooltip.style.top = (startTop + startHeight - newHeight) + 'px';
-      }
-    };
+      tooltip.style.cursor = 'grabbing';
+      tooltip.style.zIndex = '2147483648';
+      e.preventDefault();
+      e.stopPropagation();
+    });
     
-    const handleMouseUp = () => {
-      tooltip.classList.remove('resizing');
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
+    document.addEventListener('mousemove', (e) => {
+      if (isDragging) {
+        const newX = e.clientX - dragOffset.x;
+        const newY = e.clientY - dragOffset.y;
+        
+        // Keep tooltip within viewport bounds
+        const maxX = window.innerWidth - tooltip.offsetWidth;
+        const maxY = window.innerHeight - tooltip.offsetHeight;
+        
+        tooltip.style.left = Math.max(0, Math.min(newX, maxX)) + 'px';
+        tooltip.style.top = Math.max(0, Math.min(newY, maxY)) + 'px';
+        tooltip.style.transform = 'none';
+        tooltip.style.position = 'fixed';
+        
+        e.preventDefault();
+      }
+    });
     
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener('mouseup', (e) => {
+      if (isDragging) {
+        isDragging = false;
+        this.isDragging = false;
+        tooltip.style.cursor = 'grab';
+        tooltip.style.zIndex = '2147483647';
+      }
+    });
+    
+    // Make the tooltip cursor indicate it's draggable
+    tooltip.style.cursor = 'grab';
   }
 
   hideTooltip() {
     if (this.currentTooltip) {
-      // Clean up event listeners
-      if (this.currentTooltip._cleanup) {
-        this.currentTooltip._cleanup();
-      }
-      
       this.currentTooltip.style.opacity = '0';
       this.currentTooltip.style.transform = 'translateY(5px)';
       
@@ -948,11 +1253,35 @@ class ToolTipContentScript {
 }
 
 // Initialize content script when DOM is ready
+console.log('ToolTip Content Script loading...');
+
+// Force initialization after a short delay to ensure DOM is ready
+setTimeout(() => {
+  console.log('Initializing ToolTip Content Script...');
+  try {
+    new ToolTipContentScript();
+    console.log('ToolTip Content Script initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize ToolTip Content Script:', error);
+  }
+}, 100);
+
+// Also try immediate initialization if DOM is already ready
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
-    new ToolTipContentScript();
+    console.log('DOM loaded, initializing ToolTip Content Script...');
+    try {
+      new ToolTipContentScript();
+    } catch (error) {
+      console.error('Failed to initialize on DOM ready:', error);
+    }
   });
 } else {
-  new ToolTipContentScript();
+  console.log('DOM already ready, initializing immediately...');
+  try {
+    new ToolTipContentScript();
+  } catch (error) {
+    console.error('Failed to initialize immediately:', error);
+  }
 }
 

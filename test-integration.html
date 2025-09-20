@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ToolTip Extension Test Page</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            line-height: 1.6;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .test-section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 2px dashed #e0e0e0;
+            border-radius: 8px;
+        }
+        
+        .test-section h3 {
+            color: #555;
+            margin-bottom: 15px;
+        }
+        
+        .test-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+            transition: transform 0.2s ease;
+        }
+        
+        .test-button:hover {
+            transform: translateY(-2px);
+        }
+        
+        .test-link {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+            margin: 10px;
+            display: inline-block;
+        }
+        
+        .test-link:hover {
+            text-decoration: underline;
+        }
+        
+        .test-input {
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 16px;
+            margin: 10px;
+            width: 200px;
+        }
+        
+        .test-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .status {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #667eea;
+        }
+        
+        .instructions {
+            background: #e3f2fd;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        
+        .instructions h2 {
+            color: #1976d2;
+            margin-bottom: 15px;
+        }
+        
+        .instructions ol {
+            margin-left: 20px;
+        }
+        
+        .instructions li {
+            margin: 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 ToolTip Extension Test Page</h1>
+        
+        <div class="instructions">
+            <h2>📋 Testing Instructions</h2>
+            <ol>
+                <li>Make sure the ToolTip Chrome Extension is loaded and enabled</li>
+                <li>Ensure the local Playwright service is running on localhost:3001</li>
+                <li>Hover over the elements below to test tooltip functionality</li>
+                <li>Click on links to test screenshot capture</li>
+                <li>Check the extension popup for service status</li>
+            </ol>
+        </div>
+        
+        <div class="status">
+            <strong>Extension Status:</strong> <span id="extension-status">Checking...</span><br>
+            <strong>Service Status:</strong> <span id="service-status">Checking...</span>
+        </div>
+        
+        <div class="test-section">
+            <h3>🔘 Button Tests</h3>
+            <button class="test-button" onclick="alert('Button clicked!')">Primary Button</button>
+            <button class="test-button" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);">Danger Button</button>
+            <button class="test-button" style="background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);">Success Button</button>
+            <button class="test-button" style="background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);">Warning Button</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>🔗 Link Tests</h3>
+            <a href="https://www.google.com" class="test-link" target="_blank">Google (External Link)</a>
+            <a href="https://www.github.com" class="test-link" target="_blank">GitHub (External Link)</a>
+            <a href="https://www.stackoverflow.com" class="test-link" target="_blank">Stack Overflow (External Link)</a>
+            <a href="#section1" class="test-link">Internal Link (Anchor)</a>
+        </div>
+        
+        <div class="test-section">
+            <h3>📝 Input Tests</h3>
+            <input type="text" class="test-input" placeholder="Text input field">
+            <input type="email" class="test-input" placeholder="Email input field">
+            <input type="password" class="test-input" placeholder="Password input field">
+            <input type="search" class="test-input" placeholder="Search input field">
+        </div>
+        
+        <div class="test-section">
+            <h3>🎯 Interactive Elements</h3>
+            <select class="test-input">
+                <option>Select an option</option>
+                <option>Option 1</option>
+                <option>Option 2</option>
+                <option>Option 3</option>
+            </select>
+            <textarea class="test-input" placeholder="Textarea field" rows="3"></textarea>
+        </div>
+        
+        <div class="test-section">
+            <h3>🎨 Custom Elements</h3>
+            <div class="test-button" style="display: inline-block; cursor: pointer;" onclick="alert('Custom div clicked!')">
+                Custom Div Button
+            </div>
+            <span class="test-button" style="display: inline-block; cursor: pointer;" onclick="alert('Custom span clicked!')">
+                Custom Span Button
+            </span>
+        </div>
+        
+        <div class="test-section">
+            <h3>🔍 Fresh Crawl Test</h3>
+            <p>Click the "Fresh Crawl" button in the extension popup to scan this entire page and capture screenshots of all clickable elements.</p>
+            <div class="test-button" onclick="testFreshCrawl()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px;">
+                Test Fresh Crawl Functionality
+            </div>
+            <div id="crawl-test-results" style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 6px; display: none;">
+                <p><strong>Crawl Test Results:</strong></p>
+                <div id="crawl-results-content"></div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>📊 Test Results</h3>
+            <div id="test-results">
+                <p>Hover over elements above to see tooltips appear. Check the browser console for any errors.</p>
+                <p><strong>Fresh Crawl:</strong> Use the extension popup to scan this entire page and capture screenshots of all clickable elements.</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Check extension status
+        function checkExtensionStatus() {
+            if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id) {
+                document.getElementById('extension-status').textContent = '✅ Extension Loaded';
+                checkServiceStatus();
+            } else {
+                document.getElementById('extension-status').textContent = '❌ Extension Not Found';
+            }
+        }
+        
+        // Check service status
+        async function checkServiceStatus() {
+            try {
+                const response = await fetch('http://localhost:3001/health');
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('service-status').textContent = `✅ Service Running (${data.service})`;
+                } else {
+                    document.getElementById('service-status').textContent = '⚠️ Service Error';
+                }
+            } catch (error) {
+                document.getElementById('service-status').textContent = '❌ Service Offline';
+            }
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            checkExtensionStatus();
+            
+            // Add test event listeners
+            document.querySelectorAll('.test-button, .test-link, .test-input').forEach(element => {
+                element.addEventListener('mouseenter', (e) => {
+                    console.log('Element hovered:', e.target.tagName, e.target.textContent || e.target.placeholder);
+                });
+                
+                element.addEventListener('click', (e) => {
+                    console.log('Element clicked:', e.target.tagName, e.target.textContent || e.target.placeholder);
+                });
+            });
+        });
+        
+        // Log tooltip events
+        document.addEventListener('mouseover', (e) => {
+            if (e.target.closest('.tooltip-companion-tooltip')) {
+                console.log('Tooltip hovered');
+            }
+        });
+
+        // Test fresh crawl functionality
+        function testFreshCrawl() {
+            const resultsDiv = document.getElementById('crawl-test-results');
+            const contentDiv = document.getElementById('crawl-results-content');
+            
+            resultsDiv.style.display = 'block';
+            contentDiv.innerHTML = '<p>Testing fresh crawl functionality...</p>';
+            
+            // Count clickable elements on the page
+            const clickableElements = document.querySelectorAll([
+                'button',
+                'a[href]',
+                '[role="button"]',
+                '[tabindex]:not([tabindex="-1"])',
+                'input[type="button"]',
+                'input[type="submit"]',
+                'input[type="reset"]',
+                '[onclick]',
+                '[data-testid*="button"]',
+                '[data-testid*="btn"]',
+                '.btn',
+                '.button',
+                'select',
+                'textarea',
+                'input[type="text"]',
+                'input[type="email"]',
+                'input[type="password"]',
+                'input[type="search"]'
+            ].join(', '));
+            
+            const visibleElements = Array.from(clickableElements).filter(el => {
+                const rect = el.getBoundingClientRect();
+                const style = window.getComputedStyle(el);
+                return rect.width > 0 && 
+                       rect.height > 0 && 
+                       style.display !== 'none' && 
+                       style.visibility !== 'hidden' && 
+                       style.opacity !== '0' && 
+                       !el.disabled;
+            });
+            
+            contentDiv.innerHTML = `
+                <p>✅ Found ${visibleElements.length} clickable elements on this page</p>
+                <p>📋 Element types found:</p>
+                <ul>
+                    ${Array.from(new Set(visibleElements.map(el => el.tagName.toLowerCase()))).map(tag => `<li>${tag}</li>`).join('')}
+                </ul>
+                <p>🔍 <strong>Next step:</strong> Click the "Fresh Crawl" button in the extension popup to capture screenshots of all these elements!</p>
+            `;
+        }
+    </script>
+</body>
+</html>

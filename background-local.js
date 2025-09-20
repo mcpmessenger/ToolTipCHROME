@@ -47,9 +47,13 @@ class ToolTipBackground {
   async initializeSettings() {
     const result = await chrome.storage.local.get('tooltipSettings');
     if (!result.tooltipSettings) {
+      console.log('Initializing default settings for ToolTip Companion');
       await chrome.storage.local.set({
         tooltipSettings: this.defaultSettings
       });
+      console.log('Default settings saved:', this.defaultSettings);
+    } else {
+      console.log('Existing settings found:', result.tooltipSettings);
     }
   }
 
@@ -119,6 +123,16 @@ class ToolTipBackground {
         case 'cleanupOldScreenshots':
           await this.cleanupOldScreenshots();
           sendResponse({ success: true });
+          break;
+
+        case 'checkServiceStatus':
+          const status = await this.checkServiceStatus();
+          sendResponse({ success: true, data: status });
+          break;
+
+        case 'startFreshCrawl':
+          const crawlResult = await this.startFreshCrawl();
+          sendResponse({ success: true, data: crawlResult });
           break;
 
         default:
@@ -315,7 +329,14 @@ class ToolTipBackground {
         };
       }
 
-      // Capture new screenshot using chrome.tabs API
+      // Try local Playwright service first
+      const playwrightResult = await this.captureWithPlaywrightService(elementData);
+      if (playwrightResult.success) {
+        return playwrightResult;
+      }
+
+      // Fallback to chrome.tabs API
+      console.log('Playwright service unavailable, using chrome.tabs fallback');
       const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
       if (!tabs[0]) {
         throw new Error('No active tab found');
@@ -359,6 +380,84 @@ class ToolTipBackground {
     }
   }
 
+  async captureWithPlaywrightService(elementData) {
+    try {
+      console.log('🎭 Attempting Playwright service capture for:', elementData.url);
+      
+      // Check if local service is available
+      const healthCheck = await fetch('http://localhost:3001/health', {
+        method: 'GET'
+      });
+
+      if (!healthCheck.ok) {
+        throw new Error(`Health check failed: ${healthCheck.status}`);
+      }
+
+      console.log('✅ Playwright service is healthy');
+
+      // Request screenshot from Playwright service
+      const requestBody = {
+        url: elementData.url,
+        selector: elementData.selector || 'body',
+        elementType: elementData.tag,
+        maxScreenshots: 1
+      };
+
+      console.log('📤 Sending request to Playwright service:', requestBody);
+
+      const response = await fetch('http://localhost:3001/screenshot', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      console.log('📥 Playwright service response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Playwright service error:', errorText);
+        throw new Error(`Service error: ${response.status} - ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log('📊 Playwright service result:', { 
+        success: result.success, 
+        hasScreenshot: !!result.screenshot,
+        screenshotLength: result.screenshot ? result.screenshot.length : 0
+      });
+      
+      if (result.success && result.screenshot) {
+        // Store in IndexedDB
+        const screenshotId = await this.storeScreenshot({
+          url: elementData.url,
+          dataUrl: result.screenshot,
+          metadata: result.metadata,
+          timestamp: result.timestamp || Date.now(),
+          elementType: elementData.tag
+        });
+
+        console.log('💾 Screenshot stored in IndexedDB with ID:', screenshotId);
+
+        return {
+          success: true,
+          screenshot: result.screenshot,
+          metadata: result.metadata,
+          timestamp: result.timestamp || Date.now(),
+          screenshotId: screenshotId,
+          source: 'playwright'
+        };
+      } else {
+        throw new Error(result.error || 'Screenshot capture failed - no image data received');
+      }
+
+    } catch (error) {
+      console.error('❌ Playwright service capture failed:', error.message);
+      throw error;
+    }
+  }
+
   async previewLinkLocal(linkData) {
     const settings = await this.getSettings();
     
@@ -379,7 +478,19 @@ class ToolTipBackground {
         };
       }
 
-      // For link previews, we need to open the URL in a new tab temporarily
+      // Try local Playwright service first for link previews
+      const playwrightResult = await this.captureWithPlaywrightService({
+        url: linkData.url,
+        tag: 'link_preview',
+        selector: 'body'
+      });
+      
+      if (playwrightResult.success) {
+        return playwrightResult;
+      }
+
+      // Fallback to chrome.tabs API
+      console.log('Playwright service unavailable for link preview, using chrome.tabs fallback');
       const newTab = await chrome.tabs.create({ 
         url: linkData.url, 
         active: false 
@@ -659,6 +770,286 @@ class ToolTipBackground {
         reject(request.error);
       };
     });
+  }
+
+  async checkServiceStatus() {
+    try {
+      const response = await fetch('http://localhost:3001/health', {
+        method: 'GET',
+        timeout: 3000
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return {
+          available: true,
+          status: 'running',
+          service: data.service || 'ToolTip Screenshot Service',
+          timestamp: data.timestamp
+        };
+      } else {
+        return {
+          available: false,
+          status: 'error',
+          error: `HTTP ${response.status}`,
+          timestamp: new Date().toISOString()
+        };
+      }
+    } catch (error) {
+      return {
+        available: false,
+        status: 'offline',
+        error: error.message,
+        timestamp: new Date().toISOString()
+      };
+    }
+  }
+
+  async startFreshCrawl() {
+    try {
+      console.log('🔍 Starting fresh crawl...');
+      
+      // Get the active tab
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tabs[0]) {
+        throw new Error('No active tab found');
+      }
+
+      const tab = tabs[0];
+      const currentUrl = tab.url;
+      
+      // Get all clickable elements from the page
+      const elements = await this.getAllClickableElements(tab.id);
+      console.log(`Found ${elements.length} clickable elements`);
+      
+      if (elements.length === 0) {
+        return {
+          totalElements: 0,
+          processedElements: 0,
+          message: 'No clickable elements found on this page'
+        };
+      }
+
+      // Process elements in batches to avoid overwhelming the system
+      const batchSize = 5;
+      const batches = this.chunkArray(elements, batchSize);
+      let processedCount = 0;
+      const results = [];
+
+      for (let i = 0; i < batches.length; i++) {
+        const batch = batches[i];
+        console.log(`Processing batch ${i + 1}/${batches.length} (${batch.length} elements)`);
+        
+        // Process batch concurrently
+        const batchPromises = batch.map(async (element) => {
+          try {
+            const result = await this.captureElementScreenshot(element, currentUrl);
+            processedCount++;
+            return { success: true, element, result };
+          } catch (error) {
+            console.error(`Failed to capture screenshot for element:`, error);
+            return { success: false, element, error: error.message };
+          }
+        });
+
+        const batchResults = await Promise.all(batchPromises);
+        results.push(...batchResults);
+        
+        // Small delay between batches to prevent overwhelming
+        if (i < batches.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+
+      const successful = results.filter(r => r.success).length;
+      const failed = results.filter(r => !r.success).length;
+
+      console.log(`Fresh crawl completed: ${successful} successful, ${failed} failed`);
+
+      return {
+        totalElements: elements.length,
+        processedElements: processedCount,
+        successful,
+        failed,
+        results: results
+      };
+
+    } catch (error) {
+      console.error('Fresh crawl failed:', error);
+      throw error;
+    }
+  }
+
+  async getAllClickableElements(tabId) {
+    return new Promise((resolve, reject) => {
+      chrome.scripting.executeScript({
+        target: { tabId: tabId },
+        func: () => {
+          const selectors = [
+            'button',
+            'a[href]',
+            '[role="button"]',
+            '[tabindex]:not([tabindex="-1"])',
+            'input[type="button"]',
+            'input[type="submit"]',
+            'input[type="reset"]',
+            '[onclick]',
+            '[data-testid*="button"]',
+            '[data-testid*="btn"]',
+            '.btn',
+            '.button',
+            'select',
+            'textarea',
+            'input[type="text"]',
+            'input[type="email"]',
+            'input[type="password"]',
+            'input[type="search"]'
+          ];
+
+          const elements = document.querySelectorAll(selectors.join(', '));
+          const clickableElements = [];
+
+          elements.forEach((element, index) => {
+            const rect = element.getBoundingClientRect();
+            const style = window.getComputedStyle(element);
+            
+            // Only include visible, interactive elements
+            if (rect.width > 0 && 
+                rect.height > 0 && 
+                style.display !== 'none' && 
+                style.visibility !== 'hidden' && 
+                style.opacity !== '0' && 
+                !element.disabled) {
+              
+              clickableElements.push({
+                index: index,
+                tagName: element.tagName.toLowerCase(),
+                text: element.textContent?.trim() || '',
+                id: element.id || null,
+                className: element.className || null,
+                href: element.href || null,
+                type: element.type || null,
+                role: element.getAttribute('role') || null,
+                title: element.getAttribute('title') || null,
+                'aria-label': element.getAttribute('aria-label') || null,
+                'data-testid': element.getAttribute('data-testid') || null,
+                selector: this.generateElementSelector(element),
+                rect: {
+                  top: rect.top,
+                  left: rect.left,
+                  width: rect.width,
+                  height: rect.height
+                }
+              });
+            }
+          });
+
+          return clickableElements;
+        }
+      }, (results) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+        } else {
+          resolve(results[0]?.result || []);
+        }
+      });
+    });
+  }
+
+  async captureElementScreenshot(element, pageUrl) {
+    try {
+      // Check if we already have a screenshot for this element
+      const existingScreenshot = await this.getExistingScreenshot(pageUrl);
+      if (existingScreenshot) {
+        return {
+          success: true,
+          cached: true,
+          screenshot: existingScreenshot.dataUrl,
+          metadata: existingScreenshot.metadata
+        };
+      }
+
+      // Try Playwright service first
+      try {
+        const playwrightResult = await this.captureWithPlaywrightService({
+          url: pageUrl,
+          selector: element.selector,
+          tag: element.tagName,
+          elementType: element.tagName
+        });
+        
+        if (playwrightResult.success) {
+          return playwrightResult;
+        }
+      } catch (playwrightError) {
+        console.log('Playwright service failed, using fallback:', playwrightError.message);
+      }
+
+      // Fallback to chrome.tabs API
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tabs[0]) {
+        throw new Error('No active tab found');
+      }
+
+      const dataUrl = await chrome.tabs.captureVisibleTab(tabs[0].windowId, {
+        format: 'png',
+        quality: 90
+      });
+
+      const metadata = await this.getPageMetadata(tabs[0].id);
+
+      // Store screenshot
+      const screenshotId = await this.storeScreenshot({
+        url: pageUrl,
+        dataUrl: dataUrl,
+        metadata: metadata,
+        timestamp: Date.now(),
+        elementType: element.tagName,
+        elementData: element
+      });
+
+      return {
+        success: true,
+        screenshot: dataUrl,
+        metadata: metadata,
+        screenshotId: screenshotId,
+        source: 'chrome.tabs'
+      };
+
+    } catch (error) {
+      console.error('Element screenshot capture failed:', error);
+      throw error;
+    }
+  }
+
+  chunkArray(array, size) {
+    const chunks = [];
+    for (let i = 0; i < array.length; i += size) {
+      chunks.push(array.slice(i, i + size));
+    }
+    return chunks;
+  }
+
+  generateElementSelector(element) {
+    if (element.id) {
+      return `#${element.id}`;
+    }
+    
+    if (element.className) {
+      const classes = element.className.split(' ').filter(c => c.trim());
+      if (classes.length > 0) {
+        return `.${classes.join('.')}`;
+      }
+    }
+    
+    const parent = element.parentElement;
+    if (parent) {
+      const siblings = Array.from(parent.children);
+      const index = siblings.indexOf(element);
+      return `${element.tagName.toLowerCase()}:nth-child(${index + 1})`;
+    }
+    
+    return element.tagName.toLowerCase();
   }
 }
 

@@ -8,13 +8,16 @@ class ToolTipPopup {
   }
 
   init() {
+    console.log('ToolTip Popup initializing...');
     this.bindElements();
     this.setupEventListeners();
     this.loadSettings();
+    console.log('ToolTip Popup initialized successfully');
   }
 
   bindElements() {
     this.elements = {
+      popupHeader: document.getElementById('popupHeader'),
       status: document.getElementById('status'),
       statusText: document.getElementById('status-text'),
       enabled: document.getElementById('enabled'),
@@ -36,12 +39,25 @@ class ToolTipPopup {
       localScreenshotsMaxStorageValue: document.getElementById('localScreenshotsMaxStorageValue'),
       localScreenshotsSettings: document.getElementById('localScreenshotsSettings'),
       cleanupButton: document.getElementById('cleanupButton'),
+      freshCrawlButton: document.getElementById('freshCrawlButton'),
+      crawlProgress: document.getElementById('crawlProgress'),
+      crawlStatus: document.getElementById('crawlStatus'),
+      progressFill: document.getElementById('progressFill'),
+      crawlStats: document.getElementById('crawlStats'),
       advancedToggle: document.getElementById('advancedToggle'),
-      advancedContent: document.getElementById('advancedContent')
+      advancedContent: document.getElementById('advancedContent'),
+      serviceStatus: document.getElementById('service-status'),
+      serviceStatusText: document.getElementById('service-status-text'),
+      refreshServiceStatus: document.getElementById('refreshServiceStatus'),
+      testTooltipsButton: document.getElementById('testTooltipsButton'),
+      openDraggablePanelButton: document.getElementById('openDraggablePanelButton')
     };
   }
 
   setupEventListeners() {
+    // Setup drag functionality for popup
+    this.setupDragFunctionality();
+    
     // Main toggle
     this.elements.enabled.addEventListener('change', () => {
       this.updateSetting('enabled', this.elements.enabled.checked);
@@ -126,6 +142,26 @@ class ToolTipPopup {
     this.elements.advancedToggle.addEventListener('click', () => {
       this.toggleAdvancedSettings();
     });
+
+    // Service status refresh
+    this.elements.refreshServiceStatus.addEventListener('click', () => {
+      this.checkServiceStatus();
+    });
+
+    // Fresh crawl button
+    this.elements.freshCrawlButton.addEventListener('click', () => {
+      this.startFreshCrawl();
+    });
+
+    // Test tooltips button
+    this.elements.testTooltipsButton.addEventListener('click', () => {
+      this.testTooltips();
+    });
+
+    // Open draggable panel button
+    this.elements.openDraggablePanelButton.addEventListener('click', () => {
+      this.openDraggablePanel();
+    });
   }
 
   async loadSettings() {
@@ -136,6 +172,7 @@ class ToolTipPopup {
         this.settings = response.data;
         this.populateUI();
         this.updateStatus();
+        this.checkServiceStatus();
       } else {
         this.showError('Failed to load settings');
       }
@@ -284,6 +321,233 @@ class ToolTipPopup {
   showError(message) {
     this.elements.status.className = 'status disabled';
     this.elements.statusText.textContent = message;
+  }
+
+  async checkServiceStatus() {
+    try {
+      this.elements.serviceStatusText.textContent = 'Checking...';
+      this.elements.serviceStatus.style.display = 'block';
+      
+      const response = await this.sendMessage({ action: 'checkServiceStatus' });
+      
+      if (response.success) {
+        const status = response.data;
+        this.updateServiceStatus(status);
+      } else {
+        this.updateServiceStatus({
+          available: false,
+          status: 'error',
+          error: 'Failed to check service status'
+        });
+      }
+    } catch (error) {
+      console.error('Error checking service status:', error);
+      this.updateServiceStatus({
+        available: false,
+        status: 'error',
+        error: error.message
+      });
+    }
+  }
+
+  updateServiceStatus(status) {
+    const { available, status: statusType, error, service } = status;
+    
+    // Update status classes
+    this.elements.serviceStatus.className = 'service-status';
+    if (available) {
+      this.elements.serviceStatus.classList.add('online');
+      this.elements.serviceStatusText.textContent = `✅ ${service || 'Local Service'} is running`;
+    } else if (statusType === 'offline') {
+      this.elements.serviceStatus.classList.add('offline');
+      this.elements.serviceStatusText.textContent = `❌ Service offline: ${error || 'Not responding'}`;
+    } else {
+      this.elements.serviceStatus.classList.add('error');
+      this.elements.serviceStatusText.textContent = `⚠️ Service error: ${error || 'Unknown error'}`;
+    }
+  }
+
+  async startFreshCrawl() {
+    try {
+      // Disable button and show progress
+      this.elements.freshCrawlButton.disabled = true;
+      this.elements.freshCrawlButton.textContent = '🔄 Crawling...';
+      this.elements.crawlProgress.classList.add('show');
+      
+      // Reset progress
+      this.elements.crawlStatus.textContent = 'Starting fresh crawl...';
+      this.elements.progressFill.style.width = '0%';
+      this.elements.crawlStats.textContent = 'Found 0 elements, processed 0';
+      
+      // Start the crawl
+      const response = await this.sendMessage({ action: 'startFreshCrawl' });
+      
+      if (response.success) {
+        this.elements.crawlStatus.textContent = 'Crawl completed successfully!';
+        this.elements.progressFill.style.width = '100%';
+        this.elements.crawlStats.textContent = `Found ${response.data.totalElements} elements, processed ${response.data.processedElements}`;
+        
+        // Show success message
+        setTimeout(() => {
+          this.elements.crawlProgress.classList.remove('show');
+          this.elements.freshCrawlButton.textContent = '🔍 Fresh Crawl - Scan Entire Page';
+          this.elements.freshCrawlButton.disabled = false;
+        }, 3000);
+      } else {
+        throw new Error(response.error || 'Crawl failed');
+      }
+    } catch (error) {
+      console.error('Fresh crawl failed:', error);
+      this.elements.crawlStatus.textContent = `Error: ${error.message}`;
+      this.elements.freshCrawlButton.textContent = '🔍 Fresh Crawl - Scan Entire Page';
+      this.elements.freshCrawlButton.disabled = false;
+      
+      // Hide progress after error
+      setTimeout(() => {
+        this.elements.crawlProgress.classList.remove('show');
+      }, 5000);
+    }
+  }
+
+  async testTooltips() {
+    try {
+      this.elements.testTooltipsButton.disabled = true;
+      this.elements.testTooltipsButton.textContent = '🧪 Testing...';
+      
+      // Get the active tab
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tabs[0]) {
+        throw new Error('No active tab found');
+      }
+
+      // Send a test message to the content script
+      const response = await chrome.tabs.sendMessage(tabs[0].id, {
+        action: 'testTooltips'
+      });
+
+      if (response && response.success) {
+        this.elements.testTooltipsButton.textContent = '✅ Test Complete - Check Console';
+      } else {
+        this.elements.testTooltipsButton.textContent = '❌ Test Failed - Check Console';
+      }
+      
+      setTimeout(() => {
+        this.elements.testTooltipsButton.textContent = '🧪 Test Tooltips - Check Console';
+        this.elements.testTooltipsButton.disabled = false;
+      }, 3000);
+      
+    } catch (error) {
+      console.error('Tooltip test failed:', error);
+      this.elements.testTooltipsButton.textContent = '❌ Test Error - Check Console';
+      this.elements.testTooltipsButton.disabled = false;
+    }
+  }
+
+  async openDraggablePanel() {
+    try {
+      this.elements.openDraggablePanelButton.disabled = true;
+      this.elements.openDraggablePanelButton.textContent = '🪟 Opening...';
+      
+      // Get the active tab
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tabs[0]) {
+        throw new Error('No active tab found');
+      }
+
+      // Send message to content script to create draggable panel
+      const response = await chrome.tabs.sendMessage(tabs[0].id, {
+        action: 'createDraggablePanel'
+      });
+
+      if (response && response.success) {
+        this.elements.openDraggablePanelButton.textContent = '✅ Panel Opened';
+        // Close the popup since we opened the draggable panel
+        window.close();
+      } else {
+        this.elements.openDraggablePanelButton.textContent = '❌ Failed to Open';
+      }
+      
+      setTimeout(() => {
+        this.elements.openDraggablePanelButton.textContent = '🪟 Open Draggable Settings Panel';
+        this.elements.openDraggablePanelButton.disabled = false;
+      }, 2000);
+      
+    } catch (error) {
+      console.error('Failed to open draggable panel:', error);
+      this.elements.openDraggablePanelButton.textContent = '❌ Error - Check Console';
+      this.elements.openDraggablePanelButton.disabled = false;
+    }
+  }
+
+  setupDragFunctionality() {
+    // Note: Chrome extension popups have limitations for true cross-frame dragging
+    // The popup is rendered in a special context that doesn't allow repositioning outside its frame
+    // However, we can still provide visual feedback and limited dragging within the popup
+    
+    let isDragging = false;
+    let startX, startY, initialX, initialY;
+    
+    // Store initial position (limited to popup bounds)
+    this.popupPosition = { x: 0, y: 0 };
+    
+    this.elements.popupHeader.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      initialX = this.popupPosition.x;
+      initialY = this.popupPosition.y;
+      
+      document.body.style.cursor = 'grabbing';
+      e.preventDefault();
+    });
+    
+    document.addEventListener('mousemove', (e) => {
+      if (isDragging) {
+        const deltaX = e.clientX - startX;
+        const deltaY = e.clientY - startY;
+        
+        this.popupPosition.x = initialX + deltaX;
+        this.popupPosition.y = initialY + deltaY;
+        
+        // Apply transform to move the popup (limited to popup bounds)
+        document.body.style.transform = `translate(${this.popupPosition.x}px, ${this.popupPosition.y}px)`;
+        document.body.style.transition = 'none';
+        
+        e.preventDefault();
+      }
+    });
+    
+    document.addEventListener('mouseup', (e) => {
+      if (isDragging) {
+        isDragging = false;
+        document.body.style.cursor = 'default';
+        document.body.style.transition = 'all 0.3s ease';
+        
+        // Store position for next time
+        this.savePopupPosition();
+        
+        e.preventDefault();
+      }
+    });
+    
+    // Load saved position
+    this.loadPopupPosition();
+    
+    // Add a note about popup limitations
+    console.log('Note: Chrome extension popups have inherent dragging limitations due to security restrictions');
+  }
+  
+  savePopupPosition() {
+    chrome.storage.local.set({ popupPosition: this.popupPosition });
+  }
+  
+  loadPopupPosition() {
+    chrome.storage.local.get(['popupPosition'], (result) => {
+      if (result.popupPosition) {
+        this.popupPosition = result.popupPosition;
+        document.body.style.transform = `translate(${this.popupPosition.x}px, ${this.popupPosition.y}px)`;
+      }
+    });
   }
 
   sendMessage(message) {
