@@ -1,0 +1,39 @@
+{
+  "name": "tooltip-companion-screenshot-service",
+  "version": "1.0.0",
+  "description": "Production screenshot service for ToolTip Companion Chrome extension using Playwright",
+  "main": "screenshot-service-production.js",
+  "scripts": {
+    "start": "node screenshot-service-production.js",
+    "dev": "nodemon screenshot-service-production.js",
+    "install-deps": "npm install",
+    "install-browsers": "npx playwright install chromium"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "playwright": "^1.40.0",
+    "cors": "^2.8.5",
+    "express-rate-limit": "^7.1.5",
+    "helmet": "^7.1.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "keywords": [
+    "playwright",
+    "screenshot",
+    "chrome-extension",
+    "tooltip",
+    "automation",
+    "api"
+  ],
+  "author": "ToolTip Companion",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tooltipcompanion/screenshot-service"
+  }
+}

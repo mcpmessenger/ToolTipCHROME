@@ -1,0 +1,412 @@
+/* ToolTip Companion Styles */
+
+#tooltip-companion-container {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  pointer-events: none !important;
+  z-index: 2147483647 !important;
+}
+
+.tooltip-companion-tooltip {
+  position: absolute !important;
+  background: linear-gradient(135deg, 
+    rgba(80, 80, 80, 0.85) 0%, 
+    rgba(60, 60, 60, 0.75) 50%, 
+    rgba(40, 40, 40, 0.85) 100%) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  color: #f0f0f0 !important;
+  padding: 0 !important;
+  border-radius: 16px !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+  min-width: 220px !important;
+  max-width: 420px !important;
+  min-height: 50px !important;
+  box-shadow: 
+    0 20px 40px rgba(0, 0, 0, 0.3),
+    0 8px 16px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  z-index: 2147483647 !important;
+  pointer-events: auto !important;
+  word-wrap: break-word !important;
+  hyphens: auto !important;
+  text-align: left !important;
+  font-weight: 400 !important;
+  font-style: normal !important;
+  text-decoration: none !important;
+  text-transform: none !important;
+  letter-spacing: 0.01em !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+  resize: both !important;
+  overflow: hidden !important;
+  user-select: text !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Tooltip header with drag handle and controls */
+.tooltip-companion-header {
+  background: linear-gradient(135deg, 
+    rgba(100, 100, 100, 0.9) 0%, 
+    rgba(80, 80, 80, 0.8) 50%, 
+    rgba(60, 60, 60, 0.9) 100%) !important;
+  border-radius: 16px 16px 0 0 !important;
+  padding: 10px 16px !important;
+  cursor: move !important;
+  user-select: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+  min-height: 36px !important;
+  backdrop-filter: blur(10px) !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.tooltip-companion-header::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    rgba(255, 255, 255, 0.05) 50%, 
+    transparent 100%) !important;
+  animation: shimmer 3s ease-in-out infinite !important;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.tooltip-companion-header:hover {
+  background: linear-gradient(135deg, 
+    rgba(110, 110, 110, 0.95) 0%, 
+    rgba(90, 90, 90, 0.85) 50%, 
+    rgba(70, 70, 70, 0.95) 100%) !important;
+}
+
+.tooltip-companion-drag-handle {
+  flex: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  color: #f0f0f0 !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+.tooltip-companion-controls {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+.tooltip-companion-btn {
+  background: linear-gradient(135deg, 
+    rgba(120, 120, 120, 0.7) 0%, 
+    rgba(100, 100, 100, 0.5) 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 6px !important;
+  width: 22px !important;
+  height: 22px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #f0f0f0 !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  backdrop-filter: blur(5px) !important;
+  box-shadow: 
+    0 2px 4px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+.tooltip-companion-btn:hover {
+  background: linear-gradient(135deg, 
+    rgba(140, 140, 140, 0.8) 0%, 
+    rgba(120, 120, 120, 0.6) 100%) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 
+    0 4px 8px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+.tooltip-companion-btn:active {
+  background: linear-gradient(135deg, 
+    rgba(100, 100, 100, 0.9) 0%, 
+    rgba(80, 80, 80, 0.7) 100%) !important;
+  transform: translateY(0) !important;
+  box-shadow: 
+    0 1px 2px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Tooltip content area */
+.tooltip-companion-content {
+  padding: 16px 20px !important;
+  color: #f0f0f0 !important;
+  line-height: 1.6 !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+/* Screenshot preview area */
+.tooltip-companion-screenshot {
+  margin: 12px 0 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  background: rgba(0, 0, 0, 0.2) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  max-width: 100% !important;
+}
+
+.tooltip-companion-screenshot img {
+  width: 100% !important;
+  height: auto !important;
+  display: block !important;
+  border-radius: 7px !important;
+}
+
+.tooltip-companion-loading {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 8px 0 !important;
+  color: #d0d0d0 !important;
+  font-size: 13px !important;
+}
+
+/* Resize handles */
+.tooltip-companion-resize-handle {
+  position: absolute !important;
+  background: transparent !important;
+  z-index: 1 !important;
+}
+
+.tooltip-companion-resize-handle.nw {
+  top: -5px !important;
+  left: -5px !important;
+  width: 10px !important;
+  height: 10px !important;
+  cursor: nw-resize !important;
+}
+
+.tooltip-companion-resize-handle.ne {
+  top: -5px !important;
+  right: -5px !important;
+  width: 10px !important;
+  height: 10px !important;
+  cursor: ne-resize !important;
+}
+
+.tooltip-companion-resize-handle.sw {
+  bottom: -5px !important;
+  left: -5px !important;
+  width: 10px !important;
+  height: 10px !important;
+  cursor: sw-resize !important;
+}
+
+.tooltip-companion-resize-handle.se {
+  bottom: -5px !important;
+  right: -5px !important;
+  width: 10px !important;
+  height: 10px !important;
+  cursor: se-resize !important;
+}
+
+.tooltip-companion-resize-handle.n {
+  top: -3px !important;
+  left: 10px !important;
+  right: 10px !important;
+  height: 6px !important;
+  cursor: n-resize !important;
+}
+
+.tooltip-companion-resize-handle.s {
+  bottom: -3px !important;
+  left: 10px !important;
+  right: 10px !important;
+  height: 6px !important;
+  cursor: s-resize !important;
+}
+
+.tooltip-companion-resize-handle.w {
+  left: -3px !important;
+  top: 10px !important;
+  bottom: 10px !important;
+  width: 6px !important;
+  cursor: w-resize !important;
+}
+
+.tooltip-companion-resize-handle.e {
+  right: -3px !important;
+  top: 10px !important;
+  bottom: 10px !important;
+  width: 6px !important;
+  cursor: e-resize !important;
+}
+
+/* Collapsed state */
+.tooltip-companion-tooltip.collapsed {
+  min-height: 32px !important;
+  max-height: 32px !important;
+}
+
+.tooltip-companion-tooltip.collapsed .tooltip-companion-content {
+  display: none !important;
+}
+
+.tooltip-companion-tooltip.collapsed .tooltip-companion-header {
+  border-radius: 12px !important;
+  border-bottom: none !important;
+}
+
+/* Remove the old arrow pointer */
+.tooltip-companion-tooltip::before {
+  display: none !important;
+}
+
+/* Dark mode adjustments for grey theme */
+@media (prefers-color-scheme: dark) {
+  .tooltip-companion-tooltip {
+    background: rgba(50, 50, 50, 0.95) !important;
+    border-color: rgba(100, 100, 100, 0.3) !important;
+  }
+  
+  .tooltip-companion-header {
+    background: rgba(70, 70, 70, 0.8) !important;
+  }
+  
+  .tooltip-companion-header:hover {
+    background: rgba(80, 80, 80, 0.9) !important;
+  }
+}
+
+/* Light mode adjustments for grey theme */
+@media (prefers-color-scheme: light) {
+  .tooltip-companion-tooltip {
+    background: rgba(80, 80, 80, 0.95) !important;
+    border-color: rgba(140, 140, 140, 0.3) !important;
+    color: #f0f0f0 !important;
+  }
+  
+  .tooltip-companion-header {
+    background: rgba(90, 90, 90, 0.8) !important;
+  }
+  
+  .tooltip-companion-header:hover {
+    background: rgba(100, 100, 100, 0.9) !important;
+  }
+}
+
+/* Loading spinner animation */
+@keyframes tooltip-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.tooltip-companion-spinner {
+  display: inline-block !important;
+  width: 12px !important;
+  height: 12px !important;
+  border: 2px solid rgba(255, 255, 255, 0.3) !important;
+  border-top: 2px solid white !important;
+  border-radius: 50% !important;
+  animation: tooltip-spin 1s linear infinite !important;
+  margin-left: 8px !important;
+}
+
+/* Glassmorphism effect for modern browsers */
+@supports (backdrop-filter: blur(15px)) {
+  .tooltip-companion-tooltip {
+    background: rgba(60, 60, 60, 0.9) !important;
+    backdrop-filter: blur(15px) !important;
+  }
+}
+
+/* Fallback for older browsers */
+@supports not (backdrop-filter: blur(15px)) {
+  .tooltip-companion-tooltip {
+    background: rgba(60, 60, 60, 0.98) !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .tooltip-companion-tooltip {
+    background: #404040 !important;
+    border: 2px solid #e0e0e0 !important;
+    backdrop-filter: none !important;
+    color: #ffffff !important;
+  }
+  
+  .tooltip-companion-header {
+    background: #505050 !important;
+    border-bottom-color: #e0e0e0 !important;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .tooltip-companion-tooltip {
+    transition: none !important;
+  }
+  
+  .tooltip-companion-spinner {
+    animation: none !important;
+  }
+}
+
+/* Additional interactive states */
+.tooltip-companion-tooltip.dragging {
+  transition: none !important;
+  z-index: 2147483648 !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+.tooltip-companion-tooltip.resizing {
+  transition: none !important;
+  user-select: none !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Hover effects for better UX */
+.tooltip-companion-tooltip:hover {
+  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.45), 0 3px 10px rgba(0, 0, 0, 0.25) !important;
+}
+
+/* Loading state in content */
+.tooltip-companion-content.loading {
+  opacity: 0.7 !important;
+  pointer-events: none !important;
+}
+
+/* Error state */
+.tooltip-companion-content.error {
+  color: #ff9999 !important;
+}
+
+/* Success state */
+.tooltip-companion-content.success {
+  color: #99ff99 !important;
+}
+

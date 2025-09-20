@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ToolTip Companion Settings</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 350px;
+            min-height: 400px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, 
+                rgba(80, 80, 80, 0.9) 0%, 
+                rgba(60, 60, 60, 0.8) 50%, 
+                rgba(40, 40, 40, 0.9) 100%);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            color: #f0f0f0;
+            border-radius: 16px;
+            box-shadow: 
+                0 20px 40px rgba(0, 0, 0, 0.3),
+                0 8px 16px rgba(0, 0, 0, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .header {
+            padding: 20px;
+            text-align: center;
+            background: rgba(80, 80, 80, 0.3);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(120, 120, 120, 0.3);
+        }
+
+        .header h1 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .privacy-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid rgba(76, 175, 80, 0.5);
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            margin-top: 8px;
+        }
+
+        .content {
+            padding: 20px;
+        }
+
+        .setting-group {
+            margin-bottom: 20px;
+        }
+
+        .setting-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(120, 120, 120, 0.4);
+            transition: 0.3s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.3s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #70a070;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        .select-wrapper {
+            position: relative;
+        }
+
+        select, input[type="text"], input[type="url"], input[type="password"] {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid rgba(120, 120, 120, 0.4);
+            border-radius: 6px;
+            background: rgba(80, 80, 80, 0.3);
+            color: #e8e8e8;
+            font-size: 14px;
+            backdrop-filter: blur(10px);
+        }
+
+        select option {
+            background: #505050;
+            color: #e8e8e8;
+        }
+
+        input::placeholder {
+            color: rgba(232, 232, 232, 0.6);
+        }
+
+        .range-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            height: 4px;
+            border-radius: 2px;
+            background: rgba(120, 120, 120, 0.4);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #e8e8e8;
+            cursor: pointer;
+        }
+
+        .range-value {
+            font-size: 12px;
+            min-width: 40px;
+            text-align: right;
+        }
+
+        .advanced-section {
+            border-top: 1px solid rgba(120, 120, 120, 0.3);
+            padding-top: 20px;
+            margin-top: 20px;
+        }
+
+        .advanced-toggle {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 0;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .advanced-content {
+            display: none;
+            margin-top: 15px;
+        }
+
+        .advanced-content.show {
+            display: block;
+        }
+
+        .chevron {
+            transition: transform 0.3s ease;
+        }
+
+        .chevron.rotated {
+            transform: rotate(180deg);
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .status.enabled {
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid rgba(76, 175, 80, 0.5);
+        }
+
+        .status.disabled {
+            background: rgba(244, 67, 54, 0.2);
+            border: 1px solid rgba(244, 67, 54, 0.5);
+        }
+
+        .cleanup-button {
+            width: 100%;
+            padding: 8px 12px;
+            background: rgba(255, 152, 0, 0.2);
+            border: 1px solid rgba(255, 152, 0, 0.5);
+            border-radius: 6px;
+            color: #e8e8e8;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .cleanup-button:hover {
+            background: rgba(255, 152, 0, 0.3);
+        }
+
+        .cleanup-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .footer {
+            padding: 15px 20px;
+            border-top: 1px solid rgba(120, 120, 120, 0.3);
+            text-align: center;
+            font-size: 11px;
+            opacity: 0.7;
+        }
+
+        .footer a {
+            color: #e8e8e8;
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        .setting-description {
+            font-size: 12px;
+            opacity: 0.7;
+            margin-top: 4px;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>ToolTip Companion</h1>
+        <p>Beautiful interactive tooltips for any webpage</p>
+        <div class="privacy-badge">
+            <span>🔒</span>
+            <span>Privacy-First Local Storage</span>
+        </div>
+    </div>
+
+    <div class="content">
+        <div id="status" class="status">
+            <span id="status-text">Loading...</span>
+        </div>
+
+        <div class="setting-group">
+            <label class="setting-label">
+                <span>Enable ToolTip Companion</span>
+                <div class="toggle-switch">
+                    <input type="checkbox" id="enabled">
+                    <span class="slider"></span>
+                </div>
+            </label>
+        </div>
+
+        <div class="setting-group">
+            <label class="setting-label" for="triggerEvent">Trigger Event</label>
+            <div class="select-wrapper">
+                <select id="triggerEvent">
+                    <option value="hover">Hover (Mouse Over)</option>
+                    <option value="click">Click</option>
+                    <option value="focus">Focus</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <label class="setting-label" for="delay">Hover Delay</label>
+            <div class="range-wrapper">
+                <input type="range" id="delay" min="0" max="2000" step="100">
+                <span class="range-value" id="delayValue">500ms</span>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <label class="setting-label" for="position">Tooltip Position</label>
+            <div class="select-wrapper">
+                <select id="position">
+                    <option value="auto">Auto (Smart Positioning)</option>
+                    <option value="top">Always Top</option>
+                    <option value="bottom">Always Bottom</option>
+                    <option value="left">Always Left</option>
+                    <option value="right">Always Right</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="advanced-section">
+            <div class="advanced-toggle" id="advancedToggle">
+                <span>Advanced Settings</span>
+                <span class="chevron">▼</span>
+            </div>
+            <div class="advanced-content" id="advancedContent">
+                <div class="setting-group">
+                    <label class="setting-label" for="analysisMode">Analysis Mode</label>
+                    <div class="select-wrapper">
+                        <select id="analysisMode">
+                            <option value="local">Local (Privacy-focused)</option>
+                            <option value="api">External API</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="setting-group" id="apiSettings" style="display: none;">
+                    <label class="setting-label" for="apiUrl">API URL</label>
+                    <input type="url" id="apiUrl" placeholder="https://api.example.com/analyze">
+                    
+                    <label class="setting-label" for="apiKey" style="margin-top: 10px;">API Key</label>
+                    <input type="password" id="apiKey" placeholder="Your API key">
+                </div>
+
+                <div class="setting-group">
+                    <label class="setting-label">
+                        <span>Show Preview Images</span>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="showPreviews">
+                            <span class="slider"></span>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="setting-group">
+                    <label class="setting-label">
+                        <span>Interactive Tooltips (Draggable/Resizable)</span>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="interactiveTooltips" checked>
+                            <span class="slider"></span>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="setting-group">
+                    <label class="setting-label">
+                        <span>Local Screenshots</span>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="localScreenshotsEnabled" checked>
+                            <span class="slider"></span>
+                        </div>
+                    </label>
+                    <div class="setting-description">
+                        Screenshots are captured and stored locally in your browser. No data is sent to external servers.
+                    </div>
+                </div>
+
+                <div class="setting-group" id="localScreenshotsSettings">
+                    <label class="setting-label">
+                        <span>Auto-capture Screenshots</span>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="localScreenshotsAutoCapture" checked>
+                            <span class="slider"></span>
+                        </div>
+                    </label>
+                    
+                    <label class="setting-label" for="localScreenshotsWaitTime" style="margin-top: 15px;">Page Load Wait Time</label>
+                    <div class="range-wrapper">
+                        <input type="range" id="localScreenshotsWaitTime" min="1000" max="10000" step="500" value="3000">
+                        <span class="range-value" id="localScreenshotsWaitTimeValue">3000ms</span>
+                    </div>
+                    
+                    <label class="setting-label" for="localScreenshotsMaxStorage" style="margin-top: 15px;">Max Storage Size</label>
+                    <div class="range-wrapper">
+                        <input type="range" id="localScreenshotsMaxStorage" min="10485760" max="104857600" step="10485760" value="52428800">
+                        <span class="range-value" id="localScreenshotsMaxStorageValue">50MB</span>
+                    </div>
+                    
+                    <button class="cleanup-button" id="cleanupButton" style="margin-top: 15px;">
+                        Cleanup Old Screenshots
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <a href="https://tooltipcompanion.com" target="_blank">tooltipcompanion.com</a> • 
+        <a href="https://github.com/mcpmessenger/ToolTip" target="_blank">GitHub</a>
+    </div>
+
+    <script src="popup-local.js"></script>
+</body>
+</html>
+
