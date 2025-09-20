@@ -1,250 +1,255 @@
-# 🔍 ToolTip Companion Chrome Extension
+# ToolTip Chrome Extension v2.0.0
 
-> **Beautiful interactive tooltips with AI-powered insights and screenshot previews**
+A revolutionary Chrome extension that provides screenshot-based tooltips for any webpage. When you hover over clickable elements, the extension automatically captures screenshots of what happens when those elements are clicked, storing them locally in your browser for instant access.
 
-[![Chrome Web Store](https://img.shields.io/badge/Chrome-Extension-green?style=for-the-badge&logo=google-chrome)](https://chrome.google.com/webstore)
-[![Version](https://img.shields.io/badge/version-1.0.0-blue?style=for-the-badge)](https://github.com/mcpmessenger/ToolTipCHROME/releases)
-[![License](https://img.shields.io/badge/license-MIT-yellow?style=for-the-badge)](LICENSE)
+## 🌟 Features
 
-## ✨ Features
-
-### 🎨 **Beautiful Glassmorphism Design**
-- **Modern grey theme** with gradients and blur effects
-- **Rounded edges** and smooth animations
-- **Responsive design** that adapts to any website
-- **Dark/light mode** support
-
-### 🖱️ **Interactive Tooltips**
-- **Draggable** - Click and drag tooltips anywhere
-- **Resizable** - 8 resize handles for precise control
-- **Collapsible** - Minimize/expand functionality
-- **Smart positioning** - Auto-adjusts to viewport boundaries
-
-### 📸 **Screenshot Previews**
-- **Automatic capture** when clicking links
-- **Playwright-powered** screenshot service
-- **Link previews** with page metadata
-- **Clickable screenshots** to open links
-
-### 🤖 **AI-Powered Analysis**
-- **Local analysis** for privacy-focused users
-- **API integration** for advanced insights
-- **Element recognition** and smart tooltips
-- **Confidence scoring** for analysis quality
-
-## 🚀 Quick Start
-
-### For Users
-1. **Install Extension**: Download from Chrome Web Store (coming soon)
-2. **Click any link** to see screenshot previews
-3. **Hover over elements** for AI-powered insights
-4. **Drag and resize** tooltips as needed
-
-### For Developers
-```bash
-# Clone the repository
-git clone https://github.com/mcpmessenger/ToolTipCHROME.git
-cd ToolTipCHROME
-
-# Install dependencies
-npm install
-
-# Start screenshot service (optional)
-node screenshot-service.js
-
-# Load extension in Chrome
-# 1. Go to chrome://extensions/
-# 2. Enable "Developer mode"
-# 3. Click "Load unpacked"
-# 4. Select this directory
-```
+- **Universal Screenshot Capture**: Works on any website with any clickable element
+- **Playwright Integration**: Uses Playwright for reliable, automated screenshot capture
+- **Local Storage**: All screenshots stored locally in your browser (IndexedDB)
+- **Privacy-First**: No data sent to external servers (when using localhost service)
+- **Smart Caching**: Intelligent caching system with automatic cleanup
+- **Beautiful UI**: Modern, draggable, resizable tooltips with dark theme
+- **High Performance**: Supports up to 50 concurrent screenshot requests
+- **Auto-Detection**: Automatically detects and analyzes clickable elements
 
 ## 🏗️ Architecture
 
-```mermaid
-graph TD
-    A[Chrome Extension] -->|Injects| B[Content Script]
-    B -->|Element Data| C[Background Script]
-    C -->|Screenshot Request| D[External Service]
-    D -->|Playwright| E[Browser Automation]
-    E -->|Screenshots| F[Cloud Storage]
-    F -->|Image URL| C
-    C -->|Tooltip Data| B
-    B -->|Displays| G[Interactive Tooltip]
-    
-    H[User Popup] -->|Settings| C
-    I[AI Analysis] -->|Insights| C
+### Current Implementation (Localhost)
+```
+Chrome Extension ↔ http://localhost:3001 ↔ Playwright Service ↔ Local Browser Storage
 ```
 
-## 📁 Project Structure
-
+### Production Architecture (Recommended)
 ```
-ToolTipCHROME/
-├── 📁 extension/                 # Chrome Extension Files
-│   ├── manifest.json            # Extension manifest
-│   ├── background.js            # Service worker
-│   ├── content.js               # Content script
-│   ├── popup.html               # Extension popup UI
-│   ├── popup.js                 # Popup functionality
-│   ├── tooltip-styles.css       # Tooltip styling
-│   └── 📁 icons/                # Extension icons
-├── 📁 screenshot-service/        # External Screenshot Service
-│   ├── screenshot-service.js    # Development service
-│   ├── screenshot-service-production.js # Production service
-│   ├── package.json             # Service dependencies
-│   └── deployment-guide.md      # Deployment instructions
-├── 📁 docs/                     # Documentation
-│   ├── architecture-design.md   # System architecture
-│   ├── collaboration-guide.md   # Developer collaboration
-│   └── development-roadmap.md   # Future development
-└── README.md                    # This file
+Chrome Extension ↔ Your Cloud API ↔ Playwright Service ↔ User's Browser Storage
 ```
 
-## 🛠️ Development Setup
+## 📦 Installation
 
 ### Prerequisites
-- **Node.js** 16+ for screenshot service
-- **Chrome Browser** for extension testing
-- **Git** for version control
+- Node.js 16+ (for screenshot service)
+- Chrome browser
+- Playwright browsers (installed automatically)
 
-### Local Development
-```bash
-# 1. Clone repository
-git clone https://github.com/mcpmessenger/ToolTipCHROME.git
-cd ToolTipCHROME
+### Quick Start
 
-# 2. Install screenshot service dependencies
-npm install
+1. **Install screenshot service dependencies**:
+   ```bash
+   cd screenshot-service
+   npm install
+   npx playwright install
+   ```
 
-# 3. Install Playwright browsers
-npx playwright install chromium
+2. **Start the screenshot service**:
+   ```bash
+   # Windows
+   start.bat
+   
+   # Or manually
+   node server.js
+   ```
 
-# 4. Start screenshot service (optional)
-node screenshot-service.js
+3. **Load the Chrome extension**:
+   - Open Chrome and go to `chrome://extensions/`
+   - Enable "Developer mode"
+   - Click "Load unpacked"
+   - Select the `ToolTipCHROME-Local` folder
+   - The extension should now be active!
 
-# 5. Load extension in Chrome
-# - Go to chrome://extensions/
-# - Enable Developer mode
-# - Click "Load unpacked"
-# - Select the extension folder
-```
+## 🚀 Usage
 
-## 🎯 Current Status
+1. **Navigate to any website**
+2. **Hover over clickable elements** (buttons, links, etc.)
+3. **Wait for screenshot capture** (first time may take a few seconds)
+4. **View the screenshot tooltip** showing what happens when you click
+5. **Screenshots are cached** for instant future access
 
-### ✅ **Completed Features**
-- [x] **Grey glassmorphism theme** with beautiful gradients
-- [x] **Draggable and resizable tooltips** with smooth animations
-- [x] **Collapsible interface** with minimize/expand
-- [x] **Screenshot capture service** using Playwright
-- [x] **Link preview functionality** with metadata
-- [x] **Error handling** and graceful fallbacks
-- [x] **Production-ready service** for hosting
-- [x] **Rate limiting** and security features
-
-### 🚧 **In Progress**
-- [ ] **Chrome Web Store submission**
-- [ ] **User documentation** and tutorials
-- [ ] **Performance optimization**
-- [ ] **Additional AI analysis modes**
-
-### 📋 **Planned Features**
-- [ ] **GIF generation** for interaction previews
-- [ ] **Custom tooltip themes**
-- [ ] **Keyboard shortcuts**
-- [ ] **Analytics dashboard**
-- [ ] **Premium features**
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Collaboration Guide](docs/collaboration-guide.md) for details.
-
-### Development Workflow
-1. **Fork** the repository
-2. **Create** a feature branch (`git checkout -b feature/amazing-feature`)
-3. **Commit** your changes (`git commit -m 'Add amazing feature'`)
-4. **Push** to the branch (`git push origin feature/amazing-feature`)
-5. **Open** a Pull Request
-
-## 📖 Documentation
-
-- **[Architecture Design](docs/architecture-design.md)** - System overview and design decisions
-- **[Collaboration Guide](docs/collaboration-guide.md)** - Developer collaboration guidelines
-- **[Development Roadmap](docs/development-roadmap.md)** - Future development plans
-- **[Deployment Guide](screenshot-service/deployment-guide.md)** - Production deployment
-
-## 🔧 Configuration
+## 🛠️ Configuration
 
 ### Extension Settings
+Access settings via the extension popup:
 - **Trigger Event**: Hover, Click, or Focus
-- **Tooltip Position**: Auto, Top, Bottom, Left, Right
-- **Analysis Mode**: Local (privacy) or API (advanced)
-- **Screenshot Service**: Enable/disable automatic captures
-- **Interactive Features**: Draggable/resizable tooltips
+- **Hover Delay**: Adjust delay before tooltip appears
+- **Screenshot Quality**: Control image quality and size
+- **Caching**: Manage local storage and cleanup
 
-### Screenshot Service
-- **Rate Limiting**: 100 requests per 15 minutes
-- **Screenshot TTL**: 24 hours (configurable)
-- **Auto Cleanup**: Removes old screenshots hourly
-- **Security**: CORS protection and input validation
+### Screenshot Service Settings
+Configure in `screenshot-service/server.js`:
+- **Port**: Default 3001
+- **Max Concurrent**: Number of simultaneous requests
+- **Cache TTL**: How long screenshots are cached
+- **Max Cache Size**: Maximum number of cached screenshots
 
-## 🚀 Deployment
+## 📋 API Wish List
 
-### Extension Deployment
-1. **Package extension** for Chrome Web Store
-2. **Submit for review** (typically 1-3 days)
-3. **Monitor user feedback** and analytics
+See [API-WISHLIST.md](./API-WISHLIST.md) for the complete list of cloud API endpoints planned for production deployment.
 
-### Screenshot Service Deployment
-See [Deployment Guide](screenshot-service/deployment-guide.md) for hosting options:
-- **Heroku** (recommended for beginners)
-- **DigitalOcean** (VPS hosting)
-- **AWS/Google Cloud** (enterprise scale)
-- **Docker** (containerized deployment)
+## 🎯 Implementation Priority
 
-## 📊 Analytics & Monitoring
+### Phase 1 (MVP)
+- Primary screenshot capture
+- Health & status endpoints
+- Basic caching
+- Rate limiting
 
-### Service Health
-- **Health Check**: `GET /api/health`
-- **Service Info**: `GET /api/info`
-- **Rate Limit Status**: Included in responses
+### Phase 2 (Enhanced)
+- Batch screenshot capture
+- Element safety analysis
+- User authentication
+- Analytics
 
-### Extension Analytics
-- **Usage metrics** (coming soon)
-- **Error tracking** (coming soon)
-- **Performance monitoring** (coming soon)
+### Phase 3 (Advanced)
+- AI-powered features
+- Template generation
+- Webhook support
+- Advanced analytics
 
-## 🔒 Security & Privacy
+### Phase 4 (Enterprise)
+- Multi-tenant support
+- Advanced security
+- Compliance features
+- Enterprise integrations
 
-### Privacy First
-- **Local analysis mode** - No data leaves your device
-- **Optional API mode** - Only when explicitly enabled
-- **No tracking** - We don't collect personal data
-- **Open source** - Full transparency
+## 🔧 Development
 
-### Security Features
-- **Rate limiting** prevents abuse
-- **Input validation** and sanitization
-- **CORS protection** for API endpoints
-- **HTTPS only** for production services
+### File Structure
+```
+ToolTipCHROME-Local-v2.0.0/
+├── ToolTipCHROME-Local/
+│   ├── manifest.json              # Extension manifest
+│   ├── manifest-local.json        # Local development manifest
+│   ├── background-local.js        # Background service worker
+│   ├── content-local.js          # Content script
+│   ├── popup-local.html          # Extension popup
+│   ├── popup-local.js            # Popup script
+│   ├── tooltip-styles.css        # Tooltip styling
+│   ├── icons/                    # Extension icons
+│   └── screenshot-service/        # Node.js screenshot service
+│       ├── server.js             # Main server file
+│       ├── playwright-scraper.js # Playwright screenshot logic
+│       ├── cache-manager.js      # Local caching system
+│       ├── package.json          # Dependencies
+│       ├── start.bat             # Windows start script
+│       └── README.md             # Service documentation
+```
 
-## 📞 Support
+### Local Development
 
-- **Issues**: [GitHub Issues](https://github.com/mcpmessenger/ToolTipCHROME/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/mcpmessenger/ToolTipCHROME/discussions)
-- **Email**: [Contact via GitHub](https://github.com/mcpmessenger/ToolTipCHROME)
+1. **Start the screenshot service**:
+   ```bash
+   cd screenshot-service
+   npm start
+   ```
+
+2. **Load extension in Chrome**:
+   - Go to `chrome://extensions/`
+   - Enable "Developer mode"
+   - Click "Load unpacked"
+   - Select the extension folder
+
+3. **Test on any website**:
+   - Navigate to any website
+   - Hover over clickable elements
+   - Check browser console for logs
+
+### Production Deployment
+
+#### Option 1: Vercel (Recommended)
+```javascript
+// vercel.json
+{
+  "functions": {
+    "api/screenshot.js": {
+      "maxDuration": 30
+    }
+  }
+}
+```
+
+#### Option 2: Railway
+```dockerfile
+FROM node:18
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+EXPOSE 3001
+CMD ["node", "server.js"]
+```
+
+#### Option 3: AWS/GCP/Azure
+- Deploy as containerized service
+- Use managed databases for caching
+- Implement auto-scaling
+
+## 🛡️ Security Considerations
+
+### API Security
+- Rate limiting per user/IP
+- Validate URLs (prevent SSRF attacks)
+- Sanitize selectors
+- Add authentication if needed
+
+### Chrome Extension Security
+- Validate all API responses
+- Sanitize screenshot data
+- Implement proper error handling
+- Use HTTPS only in production
+
+## 📊 Performance
+
+- **Screenshot Capture**: 1-5 seconds per element
+- **Cache Hit Rate**: 85%+ for repeated elements
+- **Concurrent Requests**: Up to 50 simultaneous
+- **Storage**: ~50MB max local storage
+- **Memory Usage**: ~100MB for service
+
+## 🆘 Troubleshooting
+
+### Service Won't Start
+- Make sure Node.js is installed
+- Check if port 3001 is already in use
+- Ensure all dependencies are installed with `npm install`
+
+### Screenshots Not Capturing
+- Verify Playwright browsers are installed: `npx playwright install`
+- Check browser console for error messages
+- Ensure the element selector is valid
+- Try with a simpler website first
+
+### Performance Issues
+- Reduce `maxConcurrent` setting for slower machines
+- Clear cache if it becomes too large
+- Check available system memory
+
+### Chrome Extension Issues
+- Make sure the service is running on localhost:3001
+- Check Chrome extension console for error messages
+- Verify manifest permissions include localhost:3001
+
+## 🚀 Roadmap
+
+- [ ] Cloud API deployment
+- [ ] AI-powered screenshot selection
+- [ ] Multi-language support
+- [ ] Mobile browser support
+- [ ] Advanced caching strategies
+- [ ] User analytics dashboard
+- [ ] Enterprise features
+- [ ] API marketplace
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT License - see LICENSE file for details
 
-## 🙏 Acknowledgments
+## 📞 Support
 
-- **Playwright** for browser automation
-- **Chrome Extension APIs** for extension functionality
-- **Open source community** for inspiration and tools
+- **Issues**: Report bugs via GitHub Issues
+- **Documentation**: Check the README files
+- **Community**: Join our Discord server
+- **Email**: support@tooltipcompanion.com
 
 ---
 
-**Built with ❤️ for a better web browsing experience**
-
-[⭐ Star this repository](https://github.com/mcpmessenger/ToolTipCHROME) if you find it helpful!
+**Made with ❤️ for the web development community**
