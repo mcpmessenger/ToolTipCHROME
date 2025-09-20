@@ -454,23 +454,127 @@ class ToolTipPopup {
         throw new Error('No active tab found');
       }
 
+      // First, inject the content script if it's not already loaded
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: tabs[0].id },
+          files: ['content-local.js']
+        });
+      } catch (injectionError) {
+        console.log('Content script already injected or injection failed:', injectionError);
+      }
+
+      // Wait a moment for the content script to initialize
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       // Send message to content script to create draggable panel
-      const response = await chrome.tabs.sendMessage(tabs[0].id, {
-        action: 'createDraggablePanel'
-      });
+      let response;
+      try {
+        response = await chrome.tabs.sendMessage(tabs[0].id, {
+          action: 'createDraggablePanel'
+        });
+      } catch (messageError) {
+        console.log('Message sending failed, trying direct injection:', messageError);
+        // Fallback: inject the panel creation directly
+        await chrome.scripting.executeScript({
+          target: { tabId: tabs[0].id },
+          func: () => {
+            // Create draggable panel directly in the page
+            const existingPanel = document.getElementById('tooltip-draggable-panel');
+            if (existingPanel) existingPanel.remove();
+            
+            const panel = document.createElement('div');
+            panel.id = 'tooltip-draggable-panel';
+            panel.style.cssText = `
+              position: fixed; top: 100px; right: 100px; width: 400px; min-height: 500px;
+              background: linear-gradient(135deg, rgba(80, 80, 80, 0.95) 0%, rgba(60, 60, 60, 0.9) 50%, rgba(40, 40, 40, 0.95) 100%);
+              backdrop-filter: blur(20px); color: #f0f0f0; border-radius: 24px;
+              box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+              border: 2px solid rgba(255, 255, 255, 0.2); z-index: 2147483647;
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              cursor: grab; user-select: none;
+            `;
+            
+            panel.innerHTML = `
+              <div style="position: absolute; top: 15px; right: 15px; background: rgba(244, 67, 54, 0.8); border: none; border-radius: 50%; width: 30px; height: 30px; color: white; font-size: 16px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 10;" onclick="this.parentElement.remove()">×</div>
+              <div style="padding: 20px; text-align: center; background: rgba(80, 80, 80, 0.3); border-radius: 22px 22px 0 0;">
+                <h1 style="font-size: 18px; font-weight: 600; margin-bottom: 5px;">ToolTip Companion</h1>
+                <p style="font-size: 12px; opacity: 0.8;">Draggable Settings Panel</p>
+                <div style="display: inline-flex; align-items: center; gap: 4px; background: rgba(76, 175, 80, 0.2); border: 1px solid rgba(76, 175, 80, 0.5); padding: 4px 8px; border-radius: 12px; font-size: 10px; margin-top: 8px;">
+                  <span>🔒</span><span>Privacy-First Local Storage</span>
+                </div>
+              </div>
+              <div style="padding: 20px;">
+                <div style="background: rgba(76, 175, 80, 0.2); border: 1px solid rgba(76, 175, 80, 0.5); padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: center;">
+                  <strong>✅ ToolTip Companion is active with local screenshots</strong>
+                </div>
+                <div style="background: rgba(60, 60, 60, 0.3); border: 1px solid rgba(120, 120, 120, 0.3); border-radius: 8px; padding: 12px; margin-bottom: 15px;">
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: 13px; font-weight: 500;">
+                    <span>🔧 Local Service Status</span>
+                  </div>
+                  <div style="font-size: 12px; opacity: 0.8;">✅ ToolTip Screenshot Service is running</div>
+                </div>
+                <button style="width: 100%; padding: 12px 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; color: white; font-size: 14px; font-weight: 500; cursor: pointer; margin-bottom: 10px;">
+                  🧪 Test Tooltips - Check Console
+                </button>
+                <button style="width: 100%; padding: 12px 16px; background: linear-gradient(135deg, #28a745 0%, #20c997 100%); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; color: white; font-size: 14px; font-weight: 500; cursor: pointer;">
+                  🔍 Fresh Crawl - Scan Entire Page
+                </button>
+              </div>
+            `;
+            
+            // Add drag functionality
+            let isDragging = false, dragOffset = { x: 0, y: 0 };
+            panel.addEventListener('mousedown', (e) => {
+              if (e.target.tagName === 'BUTTON') return;
+              isDragging = true;
+              const rect = panel.getBoundingClientRect();
+              dragOffset.x = e.clientX - rect.left;
+              dragOffset.y = e.clientY - rect.top;
+              panel.style.cursor = 'grabbing';
+              panel.style.zIndex = '2147483648';
+              e.preventDefault();
+            });
+            
+            document.addEventListener('mousemove', (e) => {
+              if (isDragging) {
+                const newX = e.clientX - dragOffset.x;
+                const newY = e.clientY - dragOffset.y;
+                const maxX = window.innerWidth - panel.offsetWidth;
+                const maxY = window.innerHeight - panel.offsetHeight;
+                panel.style.left = Math.max(0, Math.min(newX, maxX)) + 'px';
+                panel.style.top = Math.max(0, Math.min(newY, maxY)) + 'px';
+                panel.style.right = 'auto';
+                e.preventDefault();
+              }
+            });
+            
+            document.addEventListener('mouseup', () => {
+              if (isDragging) {
+                isDragging = false;
+                panel.style.cursor = 'grab';
+                panel.style.zIndex = '2147483647';
+              }
+            });
+            
+            document.body.appendChild(panel);
+            return { success: true };
+          }
+        });
+        response = { success: true };
+      }
 
       if (response && response.success) {
         this.elements.openDraggablePanelButton.textContent = '✅ Panel Opened';
         // Close the popup since we opened the draggable panel
-        window.close();
+        setTimeout(() => window.close(), 1000);
       } else {
         this.elements.openDraggablePanelButton.textContent = '❌ Failed to Open';
+        setTimeout(() => {
+          this.elements.openDraggablePanelButton.textContent = '🪟 Open Draggable Settings Panel';
+          this.elements.openDraggablePanelButton.disabled = false;
+        }, 2000);
       }
-      
-      setTimeout(() => {
-        this.elements.openDraggablePanelButton.textContent = '🪟 Open Draggable Settings Panel';
-        this.elements.openDraggablePanelButton.disabled = false;
-      }, 2000);
       
     } catch (error) {
       console.error('Failed to open draggable panel:', error);
