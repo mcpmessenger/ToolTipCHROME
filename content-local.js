@@ -94,7 +94,7 @@ class ToolTipContentScript {
   }
 
   async autoCrawlFirst20Elements() {
-    console.log('🕷️ Auto-crawling first 20 interactive elements for screenshots...');
+    console.log('🚀 ToolTip Companion: Starting proactive screenshot capture for first 20 elements...');
     
     // Find interactive elements
     const interactiveElements = document.querySelectorAll(
@@ -123,13 +123,13 @@ class ToolTipContentScript {
             await this.captureScreenshotWithPlaywright(elementData);
             console.log(`✅ Pre-captured screenshot for element ${i + 1}/${elementsToCrawl.length}`);
             
-            // Add longer delay between individual captures to respect rate limits
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            // Shorter delay for faster proactive capture
+            await new Promise(resolve => setTimeout(resolve, 500));
           } catch (error) {
             console.log(`❌ Failed to pre-capture element ${i + 1}:`, error.message);
             // Continue with next element even if one fails
-            // Add delay even on failure to respect rate limits
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            // Shorter delay even on failure for faster processing
+            await new Promise(resolve => setTimeout(resolve, 500));
           }
         }
       }
@@ -137,15 +137,15 @@ class ToolTipContentScript {
       currentBatch++;
       
       if (end < elementsToCrawl.length) {
-        // Wait 2 seconds before next batch to respect rate limits
-        setTimeout(processBatch, 2000);
+        // Wait 1 second before next batch for faster processing
+        setTimeout(processBatch, 1000);
       } else {
         console.log('✅ Auto-crawl completed - first 20 elements pre-captured');
       }
     };
     
-    // Start processing after a short delay
-    setTimeout(processBatch, 1000);
+    // Start processing immediately for proactive capture
+    processBatch();
   }
 
   async loadSettings() {
@@ -154,7 +154,15 @@ class ToolTipContentScript {
         if (response?.success) {
           this.settings = response.data;
           this.isEnabled = this.settings.enabled;
-          console.log('Settings loaded successfully:', this.settings);
+          
+          // Force enable screenshots for proactive capture
+          if (!this.settings.localScreenshots) {
+            this.settings.localScreenshots = {};
+          }
+          this.settings.localScreenshots.enabled = true;
+          this.settings.localScreenshots.autoCapture = true;
+          
+          console.log('Settings loaded successfully (screenshots force-enabled):', this.settings);
         } else {
           console.error('Failed to load settings:', response?.error);
           // Use default settings if loading fails
@@ -162,7 +170,7 @@ class ToolTipContentScript {
             enabled: true,
             triggerEvent: 'hover',
             delay: 500,
-            localScreenshots: { enabled: true }
+            localScreenshots: { enabled: true, autoCapture: true }
           };
           this.isEnabled = true;
         }
