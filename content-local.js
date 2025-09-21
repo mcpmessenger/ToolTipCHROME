@@ -36,10 +36,116 @@ class ToolTipContentScript {
     // Start observing the page
     this.startObserving();
     
+    // Auto-crawl first 20 interactive elements for screenshots
+    this.autoCrawlFirst20Elements();
+    
+    // Add simple controls (floating button and thumbnail gallery)
+    this.addSimpleControls();
+    
     // Listen for settings changes
     this.setupSettingsListener();
     
     console.log('ToolTip Content Script initialized successfully');
+  }
+
+
+  async autoCrawlPage() {
+    console.log('🕷️ Starting fresh crawl of current page...');
+    
+    // Find interactive elements
+    const interactiveElements = document.querySelectorAll(
+      'button, a[href], input[type="button"], input[type="submit"], .btn, .button, [role="button"]'
+    );
+    
+    console.log(`Found ${interactiveElements.length} interactive elements to crawl`);
+    
+    // Process elements in batches to avoid overwhelming the system
+    const batchSize = 3;
+    const elementsToCrawl = Array.from(interactiveElements).slice(0, 20); // Limit to first 20
+    let processedCount = 0;
+    
+    for (let i = 0; i < elementsToCrawl.length; i += batchSize) {
+      const batch = elementsToCrawl.slice(i, i + batchSize);
+      
+      // Process batch in parallel
+      const promises = batch.map(async (element) => {
+        if (this.isElementInteractive(element)) {
+          try {
+            const elementData = this.extractElementData(element);
+            // Use Playwright to click and capture screenshot
+            await this.captureScreenshotWithPlaywright(elementData);
+            processedCount++;
+            console.log(`✅ Processed element ${processedCount}/${elementsToCrawl.length}: ${element.tagName.toLowerCase()}`);
+          } catch (error) {
+            console.log(`❌ Failed to process element:`, error.message);
+          }
+        }
+      });
+      
+      await Promise.all(promises);
+      
+      // Wait between batches to avoid rate limiting
+      if (i + batchSize < elementsToCrawl.length) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+    
+    console.log(`✅ Fresh crawl completed - processed ${processedCount} elements`);
+  }
+
+  async autoCrawlFirst20Elements() {
+    console.log('🕷️ Auto-crawling first 20 interactive elements for screenshots...');
+    
+    // Find interactive elements
+    const interactiveElements = document.querySelectorAll(
+      'button, a[href], input[type="button"], input[type="submit"], .btn, .button, [role="button"]'
+    );
+    
+    // Take only the first 20
+    const elementsToCrawl = Array.from(interactiveElements).slice(0, 20);
+    
+    console.log(`Found ${interactiveElements.length} interactive elements, crawling first ${elementsToCrawl.length}`);
+    
+    // Process elements in batches to avoid overwhelming the system
+    const batchSize = 1; // Process one element at a time to respect Chrome's rate limits
+    let currentBatch = 0;
+    
+    const processBatch = async () => {
+      const start = currentBatch * batchSize;
+      const end = Math.min(start + batchSize, elementsToCrawl.length);
+      
+      for (let i = start; i < end; i++) {
+        const element = elementsToCrawl[i];
+        if (this.isElementInteractive(element)) {
+          try {
+            const elementData = this.extractElementData(element);
+            // Pre-capture screenshot and store in local storage
+            await this.captureScreenshotWithPlaywright(elementData);
+            console.log(`✅ Pre-captured screenshot for element ${i + 1}/${elementsToCrawl.length}`);
+            
+            // Add longer delay between individual captures to respect rate limits
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          } catch (error) {
+            console.log(`❌ Failed to pre-capture element ${i + 1}:`, error.message);
+            // Continue with next element even if one fails
+            // Add delay even on failure to respect rate limits
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
+      }
+      
+      currentBatch++;
+      
+      if (end < elementsToCrawl.length) {
+        // Wait 2 seconds before next batch to respect rate limits
+        setTimeout(processBatch, 2000);
+      } else {
+        console.log('✅ Auto-crawl completed - first 20 elements pre-captured');
+      }
+    };
+    
+    // Start processing after a short delay
+    setTimeout(processBatch, 1000);
   }
 
   async loadSettings() {
@@ -81,7 +187,7 @@ class ToolTipContentScript {
         this.testTooltips();
         sendResponse({ success: true });
       } else if (request.action === 'createDraggablePanel') {
-        this.createDraggablePanel();
+        this.addSimpleControls();
         sendResponse({ success: true });
       }
     });
@@ -105,191 +211,133 @@ class ToolTipContentScript {
     }
   }
 
-  createDraggablePanel() {
-    console.log('🪟 Creating draggable settings panel...');
+  addSimpleControls() {
+    console.log('🕷️ Adding simple controls...');
     
-    // Remove existing panel if it exists
-    const existingPanel = document.getElementById('tooltip-draggable-panel');
-    if (existingPanel) {
-      existingPanel.remove();
+    // Remove existing controls if they exist
+    const existingControls = document.getElementById('tooltip-simple-controls');
+    if (existingControls) {
+      existingControls.remove();
     }
     
-    // Create the draggable panel
-    const panel = document.createElement('div');
-    panel.id = 'tooltip-draggable-panel';
-    panel.style.cssText = `
+    // Create simple floating button
+    const crawlButton = document.createElement('button');
+    crawlButton.id = 'tooltip-crawl-btn';
+    crawlButton.style.cssText = `
       position: fixed;
-      top: 100px;
-      right: 100px;
-      width: 400px;
-      min-height: 500px;
-      background: linear-gradient(135deg, 
-        rgba(80, 80, 80, 0.95) 0%, 
-        rgba(60, 60, 60, 0.9) 50%, 
-        rgba(40, 40, 40, 0.95) 100%);
-      backdrop-filter: blur(20px) saturate(180%);
-      -webkit-backdrop-filter: blur(20px) saturate(180%);
-      color: #f0f0f0;
-      border-radius: 24px;
-      box-shadow: 
-        0 25px 50px rgba(0, 0, 0, 0.4),
-        0 12px 24px rgba(0, 0, 0, 0.3),
-        inset 0 1px 0 rgba(255, 255, 255, 0.15);
-      border: 2px solid rgba(255, 255, 255, 0.2);
-      z-index: 2147483647;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      cursor: grab;
-      user-select: none;
-    `;
-    
-    // Create header
-    const header = document.createElement('div');
-    header.style.cssText = `
-      padding: 20px;
-      text-align: center;
-      background: rgba(80, 80, 80, 0.3);
-      backdrop-filter: blur(10px);
-      border-bottom: 1px solid rgba(120, 120, 120, 0.3);
-      border-radius: 22px 22px 0 0;
-      cursor: grab;
-    `;
-    
-    header.innerHTML = `
-      <div style="position: absolute; top: 8px; left: 50%; transform: translateX(-50%); width: 40px; height: 6px; background: rgba(255, 255, 255, 0.4); border-radius: 3px; opacity: 0.7;"></div>
-      <h1 style="font-size: 18px; font-weight: 600; margin-bottom: 5px;">ToolTip Companion</h1>
-      <p style="font-size: 12px; opacity: 0.8;">Draggable Settings Panel</p>
-      <div style="display: inline-flex; align-items: center; gap: 4px; background: rgba(76, 175, 80, 0.2); border: 1px solid rgba(76, 175, 80, 0.5); padding: 4px 8px; border-radius: 12px; font-size: 10px; margin-top: 8px;">
-        <span>🔒</span>
-        <span>Privacy-First Local Storage</span>
-      </div>
-    `;
-    
-    // Create content area
-    const content = document.createElement('div');
-    content.style.cssText = `
-      padding: 20px;
-      max-height: 400px;
-      overflow-y: auto;
-    `;
-    
-    content.innerHTML = `
-      <div style="background: rgba(76, 175, 80, 0.2); border: 1px solid rgba(76, 175, 80, 0.5); padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: center;">
-        <strong>✅ ToolTip Companion is active with local screenshots</strong>
-      </div>
-      
-      <div style="background: rgba(60, 60, 60, 0.3); border: 1px solid rgba(120, 120, 120, 0.3); border-radius: 8px; padding: 12px; margin-bottom: 15px;">
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: 13px; font-weight: 500;">
-          <span>🔧 Local Service Status</span>
-          <button style="background: rgba(120, 120, 120, 0.4); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 4px; color: #e8e8e8; font-size: 12px; padding: 4px 8px; cursor: pointer;">🔄</button>
-        </div>
-        <div style="font-size: 12px; opacity: 0.8;">✅ ToolTip Screenshot Service is running</div>
-      </div>
-      
-      <div style="margin-bottom: 20px;">
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-          <span style="font-size: 14px; font-weight: 500;">Enable ToolTip Companion</span>
-          <div style="position: relative; display: inline-block; width: 50px; height: 24px;">
-            <input type="checkbox" checked style="opacity: 0; width: 0; height: 0;">
-            <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #70a070; transition: 0.3s; border-radius: 24px;"></span>
-            <span style="position: absolute; content: ''; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: 0.3s; border-radius: 50%; transform: translateX(26px);"></span>
-          </div>
-        </div>
-      </div>
-      
-      <button style="width: 100%; padding: 12px 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; color: white; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.3s ease; margin-bottom: 10px;">
-        🧪 Test Tooltips - Check Console
-      </button>
-      
-      <button style="width: 100%; padding: 12px 16px; background: linear-gradient(135deg, #28a745 0%, #20c997 100%); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; color: white; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.3s ease;">
-        🔍 Fresh Crawl - Scan Entire Page
-      </button>
-    `;
-    
-    // Create close button
-    const closeBtn = document.createElement('button');
-    closeBtn.style.cssText = `
-      position: absolute;
-      top: 15px;
-      right: 15px;
-      background: rgba(244, 67, 54, 0.8);
+      top: 20px;
+      right: 20px;
+      width: 60px;
+      height: 60px;
+      background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
       border: none;
       border-radius: 50%;
-      width: 30px;
-      height: 30px;
       color: white;
-      font-size: 16px;
-      font-weight: bold;
+      font-size: 24px;
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 10;
+      z-index: 2147483647;
+      box-shadow: 0 8px 16px rgba(40, 167, 69, 0.3);
+      transition: all 0.3s ease;
     `;
-    closeBtn.innerHTML = '×';
+    crawlButton.innerHTML = '🕷️';
+    crawlButton.title = 'Fresh Crawl - Click to capture screenshots';
+
+    // Create thumbnail gallery
+    const gallery = document.createElement('div');
+    gallery.id = 'tooltip-thumbnail-gallery';
+    gallery.style.cssText = `
+      position: fixed;
+      top: 100px;
+      right: 20px;
+      width: 300px;
+      max-height: 400px;
+      background: rgba(40, 40, 40, 0.95);
+      backdrop-filter: blur(20px);
+      border-radius: 16px;
+      padding: 16px;
+      z-index: 2147483646;
+      display: none;
+      overflow-y: auto;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+    `;
     
-    // Assemble panel
-    panel.appendChild(closeBtn);
-    panel.appendChild(header);
-    panel.appendChild(content);
+    gallery.innerHTML = `
+      <div style="color: white; font-size: 14px; font-weight: 600; margin-bottom: 12px; text-align: center;">
+        📸 Screenshot Gallery
+      </div>
+      <div id="thumbnail-container" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+        <!-- Thumbnails will be added here -->
+      </div>
+      <div id="no-screenshots" style="text-align: center; color: #ccc; font-size: 12px; padding: 20px;">
+        No screenshots yet. Click 🕷️ to start capturing!
+      </div>
+    `;
     
-    // Add drag functionality
-    this.setupPanelDragging(panel);
-    
-    // Add close functionality
-    closeBtn.addEventListener('click', () => {
-      panel.remove();
-    });
+    // Add event listeners with null checks
+    if (crawlButton) {
+      crawlButton.addEventListener('click', async () => {
+        crawlButton.disabled = true;
+        crawlButton.innerHTML = '⏳';
+        crawlButton.title = 'Crawling...';
+        
+        try {
+          await this.autoCrawlFirst20Elements();
+          await this.updateThumbnailGallery(gallery);
+          crawlButton.innerHTML = '✅';
+          crawlButton.title = 'Crawl complete!';
+        } catch (error) {
+          console.error('Crawl failed:', error);
+          crawlButton.innerHTML = '❌';
+          crawlButton.title = 'Crawl failed';
+        } finally {
+          setTimeout(() => {
+            if (crawlButton) {
+              crawlButton.disabled = false;
+              crawlButton.innerHTML = '🕷️';
+              crawlButton.title = 'Fresh Crawl - Click to capture screenshots';
+            }
+          }, 3000);
+        }
+      });
+    }
+
+    // Toggle gallery on button hover with null checks
+    if (crawlButton) {
+      crawlButton.addEventListener('mouseenter', () => {
+        if (gallery) {
+          gallery.style.display = 'block';
+          this.updateThumbnailGallery(gallery);
+        }
+      });
+
+      crawlButton.addEventListener('mouseleave', () => {
+        // Keep gallery open for a bit to allow clicking
+        setTimeout(() => {
+          if (gallery && !gallery.matches(':hover')) {
+            gallery.style.display = 'none';
+          }
+        }, 1000);
+      });
+    }
+
+    // Keep gallery open when hovering over it
+    if (gallery) {
+      gallery.addEventListener('mouseenter', () => {
+        gallery.style.display = 'block';
+      });
+
+      gallery.addEventListener('mouseleave', () => {
+        gallery.style.display = 'none';
+      });
+    }
     
     // Add to page
-    document.body.appendChild(panel);
+    document.body.appendChild(crawlButton);
+    document.body.appendChild(gallery);
     
-    console.log('✅ Draggable settings panel created');
+    console.log('✅ Simple controls created');
   }
 
-  setupPanelDragging(panel) {
-    let isDragging = false;
-    let dragOffset = { x: 0, y: 0 };
-    
-    panel.addEventListener('mousedown', (e) => {
-      if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') {
-        return; // Don't drag when clicking buttons or inputs
-      }
-      
-      isDragging = true;
-      const rect = panel.getBoundingClientRect();
-      dragOffset.x = e.clientX - rect.left;
-      dragOffset.y = e.clientY - rect.top;
-      
-      panel.style.cursor = 'grabbing';
-      panel.style.zIndex = '2147483648';
-      e.preventDefault();
-    });
-    
-    document.addEventListener('mousemove', (e) => {
-      if (isDragging) {
-        const newX = e.clientX - dragOffset.x;
-        const newY = e.clientY - dragOffset.y;
-        
-        // Keep panel within viewport bounds
-        const maxX = window.innerWidth - panel.offsetWidth;
-        const maxY = window.innerHeight - panel.offsetHeight;
-        
-        panel.style.left = Math.max(0, Math.min(newX, maxX)) + 'px';
-        panel.style.top = Math.max(0, Math.min(newY, maxY)) + 'px';
-        panel.style.right = 'auto';
-        
-        e.preventDefault();
-      }
-    });
-    
-    document.addEventListener('mouseup', (e) => {
-      if (isDragging) {
-        isDragging = false;
-        panel.style.cursor = 'grab';
-        panel.style.zIndex = '2147483647';
-      }
-    });
-  }
 
   initializeTooltipSystem() {
     // Create tooltip container if it doesn't exist
@@ -578,12 +626,33 @@ class ToolTipContentScript {
       // Extract element data first
       const elementData = this.extractElementData(element);
       
-      // Try Playwright screenshot capture first
+      // First, try to get existing screenshot from storage
+      try {
+        const existingScreenshot = await this.getExistingScreenshot(elementData);
+        if (existingScreenshot) {
+          console.log('📸 Found existing screenshot for element:', elementData.tag);
+          this.showTooltip(element, {
+            content: existingScreenshot.metadata?.title || elementData.text || 'Interactive element',
+            description: existingScreenshot.metadata?.description || '',
+            screenshot: existingScreenshot.dataUrl,
+            metadata: existingScreenshot.metadata,
+            loading: false,
+            cached: true,
+            elementType: elementData.tag,
+            source: 'stored'
+          });
+          return;
+        }
+      } catch (storageError) {
+        console.log('No stored screenshot found:', storageError.message);
+      }
+
+      // If no stored screenshot, try to capture new one
       try {
         const screenshotResult = await this.captureScreenshotWithPlaywright(elementData);
         
         if (screenshotResult && screenshotResult.success) {
-          // Show tooltip with screenshot immediately
+          console.log('📸 Captured new screenshot for element:', elementData.tag);
           this.showTooltip(element, {
             content: screenshotResult.metadata?.title || elementData.text || 'Interactive element',
             description: screenshotResult.metadata?.description || '',
@@ -597,32 +666,29 @@ class ToolTipContentScript {
           return;
         }
       } catch (screenshotError) {
-        console.log('Playwright screenshot failed, falling back to analysis:', screenshotError.message);
+        console.log('Screenshot capture failed:', screenshotError.message);
       }
 
-      // Show loading tooltip only if screenshot fails
-      this.showTooltip(element, {
-        content: 'Analyzing element...',
-        loading: true
-      });
-
-      // Fallback to traditional analysis if screenshot fails
-      const analysis = await this.analyzeElement(elementData);
+      // Only show simple fallback if no screenshots available
+      const elementText = element.textContent?.trim().substring(0, 100) || 'Interactive Element';
+      const elementType = element.tagName.toLowerCase();
       
-      // Update tooltip with analysis
       this.showTooltip(element, {
-        content: analysis.tooltip,
-        confidence: analysis.confidence,
-        source: analysis.source,
-        elementType: analysis.elementType,
+        content: `${elementType.toUpperCase()}: ${elementText}`,
+        confidence: 0.7,
+        source: 'simple',
+        elementType: elementType,
         loading: false
       });
 
     } catch (error) {
-      console.error('Tooltip analysis failed:', error);
+      console.log('Tooltip failed:', error.message);
+      // Simple fallback that always works
       this.showTooltip(element, {
-        content: 'Analysis unavailable',
-        error: true,
+        content: 'Interactive Element',
+        confidence: 0.5,
+        source: 'fallback',
+        elementType: element.tagName.toLowerCase(),
         loading: false
       });
     }
@@ -759,27 +825,11 @@ class ToolTipContentScript {
           screenshotDiv.style.display = 'none';
         });
         
-        // Make screenshot clickable to open link or show full size
-        if (data.metadata && data.metadata.url) {
-          img.addEventListener('click', () => {
-            window.open(data.metadata.url, '_blank');
-          });
-          img.style.cursor = 'pointer';
-        } else {
-          img.addEventListener('click', () => {
-            // Open image in new tab for full size view
-            const newWindow = window.open();
-            newWindow.document.write(`
-              <html>
-                <head><title>Screenshot Preview</title></head>
-                <body style="margin:0; background:#000; display:flex; justify-content:center; align-items:center; min-height:100vh;">
-                  <img src="${data.screenshot}" style="max-width:100%; max-height:100%; object-fit:contain;" />
-                </body>
-              </html>
-            `);
-          });
-          img.style.cursor = 'zoom-in';
-        }
+        // Make screenshot clickable to show full size in modal instead of new window
+        img.addEventListener('click', () => {
+          this.showScreenshotModal(data.screenshot, data.metadata);
+        });
+        img.style.cursor = 'zoom-in';
         
         // Add status indicators
         const statusContainer = document.createElement('div');
@@ -821,7 +871,10 @@ class ToolTipContentScript {
             font-weight: 500;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
           `;
-          sourceIndicator.textContent = data.source === 'playwright' ? 'Playwright' : 'Chrome';
+          const sourceText = data.source === 'stored' ? 'Stored' : 
+                           data.source === 'playwright' ? 'Playwright' : 
+                           data.source === 'chrome_native' ? 'Chrome' : 'Unknown';
+          sourceIndicator.textContent = sourceText;
           statusContainer.appendChild(sourceIndicator);
         }
         
@@ -888,9 +941,6 @@ class ToolTipContentScript {
     tooltip.appendChild(header);
     tooltip.appendChild(content);
     
-    // Make tooltips draggable anywhere on the page using injected script
-    this.setupTooltipDragging(tooltip);
-    
     // Close button
     closeBtn.addEventListener('click', (e) => {
       e.preventDefault();
@@ -904,10 +954,6 @@ class ToolTipContentScript {
       e.stopPropagation();
       this.toggleCollapse(tooltip, collapseBtn);
     });
-    
-    // Make header draggable
-    header.style.cursor = 'grab';
-    collapseBtn.style.display = 'flex';
 
     container.appendChild(tooltip);
     this.currentTooltip = tooltip;
@@ -931,12 +977,14 @@ class ToolTipContentScript {
   }
 
   calculateTooltipPosition(elementRect) {
-    const tooltipWidth = 320; // increased width for better content display
-    const tooltipHeight = 120; // increased height for screenshots
+    const tooltipWidth = 320;
+    const tooltipHeight = 120;
     const margin = 15;
 
+    // Center tooltip horizontally relative to element
     let x = elementRect.left + elementRect.width / 2 - tooltipWidth / 2;
-    let y = elementRect.top - tooltipHeight - margin;
+    // Position tooltip directly below element (not above)
+    let y = elementRect.bottom + margin;
 
     // Adjust for viewport boundaries
     if (x < margin) x = margin;
@@ -944,13 +992,14 @@ class ToolTipContentScript {
       x = window.innerWidth - tooltipWidth - margin;
     }
 
-    if (y < margin) {
-      y = elementRect.bottom + margin; // Show below if no space above
+    // If no space below, show above element
+    if (y + tooltipHeight > window.innerHeight + window.scrollY - margin) {
+      y = elementRect.top - tooltipHeight - margin;
     }
 
     // Ensure tooltip stays within viewport
-    if (y + tooltipHeight > window.innerHeight + window.scrollY - margin) {
-      y = window.innerHeight + window.scrollY - tooltipHeight - margin;
+    if (y < window.scrollY + margin) {
+      y = window.scrollY + margin;
     }
 
     return { x: x + window.scrollX, y: y + window.scrollY };
@@ -1233,7 +1282,42 @@ class ToolTipContentScript {
         if (response?.success) {
           resolve(response.data);
         } else {
-          reject(new Error(response?.error || 'Screenshot capture failed'));
+          // Handle specific error types gracefully
+          const error = response?.error || 'Screenshot capture failed';
+          if (error.includes('MAX_CAPTURE_VISIBLE_TAB_CALLS_PER_SECOND')) {
+            reject(new Error('Rate limit exceeded - please wait a moment'));
+          } else if (error.includes('activeTab')) {
+            reject(new Error('Permission required - please refresh the page'));
+          } else {
+            reject(new Error(error));
+          }
+        }
+      });
+    });
+  }
+
+  async getExistingScreenshot(elementData) {
+    return new Promise((resolve, reject) => {
+      // Check if extension context is still valid
+      if (!chrome.runtime?.id) {
+        reject(new Error('Extension context invalidated'));
+        return;
+      }
+
+      chrome.runtime.sendMessage({
+        action: 'getExistingScreenshot',
+        data: { url: elementData.url, selector: elementData.selector }
+      }, (response) => {
+        // Handle context invalidation
+        if (chrome.runtime.lastError) {
+          reject(new Error('Extension context invalidated: ' + chrome.runtime.lastError.message));
+          return;
+        }
+        
+        if (response?.success && response.data) {
+          resolve(response.data);
+        } else {
+          reject(new Error('No existing screenshot found'));
         }
       });
     });
@@ -1250,21 +1334,414 @@ class ToolTipContentScript {
       });
     });
   }
+
+  // Message handling
+  handleMessage(request, sender, sendResponse) {
+    console.log('Content script received message:', request);
+    
+    switch (request.action) {
+      case 'toggle':
+        this.toggle();
+        sendResponse({ success: true });
+        break;
+        
+      case 'getSettings':
+        sendResponse({ success: true, data: this.settings });
+        break;
+        
+      case 'updateSettings':
+        this.updateSettings(request.data);
+        sendResponse({ success: true });
+        break;
+        
+      case 'testTooltips':
+        this.testTooltips();
+        sendResponse({ success: true });
+        break;
+        
+      case 'startFreshCrawl':
+        this.autoCrawlPage();
+        sendResponse({ success: true });
+        break;
+        
+      case 'createDraggablePanel':
+        this.createDraggablePanel();
+        sendResponse({ success: true });
+        break;
+        
+      default:
+        sendResponse({ success: false, error: 'Unknown action' });
+    }
+    
+    return true; // Keep message channel open for async response
+  }
+
+  createDraggablePanel() {
+    // Remove existing panel if it exists
+    const existingPanel = document.getElementById('tooltip-draggable-panel');
+    if (existingPanel) existingPanel.remove();
+    
+    // Create new draggable panel
+    const panel = document.createElement('div');
+    panel.id = 'tooltip-draggable-panel';
+    panel.style.cssText = `
+      position: fixed;
+      top: 100px;
+      right: 100px;
+      width: 400px;
+      min-height: 500px;
+      background: linear-gradient(135deg, rgba(80, 80, 80, 0.95) 0%, rgba(60, 60, 60, 0.9) 50%, rgba(40, 40, 40, 0.95) 100%);
+      backdrop-filter: blur(20px);
+      color: #f0f0f0;
+      border-radius: 24px;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      z-index: 2147483647;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      cursor: grab;
+      user-select: none;
+    `;
+    
+    panel.innerHTML = `
+      <div style="position: absolute; top: 15px; right: 15px; background: rgba(244, 67, 54, 0.8); border: none; border-radius: 50%; width: 30px; height: 30px; color: white; font-size: 16px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 10;" onclick="this.parentElement.remove()">×</div>
+      <div style="padding: 20px; text-align: center; background: rgba(80, 80, 80, 0.3); border-radius: 22px 22px 0 0;">
+        <h1 style="font-size: 18px; font-weight: 600; margin-bottom: 5px;">ToolTip Companion</h1>
+        <p style="font-size: 12px; opacity: 0.8;">Draggable Settings Panel</p>
+        <div style="display: inline-flex; align-items: center; gap: 4px; background: rgba(76, 175, 80, 0.2); border: 1px solid rgba(76, 175, 80, 0.5); padding: 4px 8px; border-radius: 12px; font-size: 10px; margin-top: 8px;">
+          <span>🔒</span><span>Privacy-First Local Storage</span>
+        </div>
+      </div>
+      <div style="padding: 20px;">
+        <div style="background: rgba(76, 175, 80, 0.2); border: 1px solid rgba(76, 175, 80, 0.5); padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: center;">
+          <strong>✅ ToolTip Companion is active with Playwright screenshots</strong>
+        </div>
+        
+        <!-- Fresh Crawl Button -->
+        <button id="panel-crawl-btn" style="width: 100%; padding: 12px 16px; background: linear-gradient(135deg, #28a745 0%, #20c997 100%); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; color: white; font-size: 14px; font-weight: 500; cursor: pointer; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);">
+          🕷️ Fresh Crawl - Click Links & Capture Screenshots
+        </button>
+        
+        <!-- Thumbnail Bank -->
+        <div style="background: rgba(60, 60, 60, 0.3); border: 1px solid rgba(120, 120, 120, 0.3); border-radius: 8px; padding: 12px; margin-bottom: 15px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; font-size: 13px; font-weight: 500;">
+            <span>📸 Screenshot Gallery</span>
+            <span id="screenshot-count" style="font-size: 11px; opacity: 0.7;">0 screenshots</span>
+          </div>
+          <div id="thumbnail-container" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; max-height: 200px; overflow-y: auto;">
+            <!-- Thumbnails will be added here -->
+          </div>
+          <div id="no-screenshots" style="text-align: center; font-size: 12px; opacity: 0.6; padding: 20px;">
+            No screenshots yet. Click "Fresh Crawl" to start capturing!
+          </div>
+        </div>
+        
+        <!-- Status -->
+        <div style="background: rgba(60, 60, 60, 0.3); border: 1px solid rgba(120, 120, 120, 0.3); border-radius: 8px; padding: 12px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: 13px; font-weight: 500;">
+            <span>🔧 Playwright Service Status</span>
+            <span id="service-status" style="font-size: 11px; opacity: 0.7;">Checking...</span>
+          </div>
+          <div id="service-details" style="font-size: 12px; opacity: 0.8;">Loading service status...</div>
+        </div>
+      </div>
+    `;
+    
+    // Add drag functionality
+    this.setupPanelDragging(panel);
+    
+    // Add button event listeners
+    const crawlBtn = panel.querySelector('#panel-crawl-btn');
+    
+    if (crawlBtn) {
+      crawlBtn.addEventListener('click', async () => {
+        crawlBtn.disabled = true;
+        crawlBtn.textContent = '🕷️ Crawling...';
+        
+        try {
+          await this.autoCrawlFirst20Elements();
+          await this.updateThumbnailGallery(panel);
+        } catch (error) {
+          console.error('Crawl failed:', error);
+        } finally {
+          crawlBtn.disabled = false;
+          crawlBtn.textContent = '🕷️ Fresh Crawl - Click Links & Capture Screenshots';
+        }
+      });
+    }
+    
+    // Load thumbnails and service status
+    this.updateThumbnailGallery(panel);
+    this.updateServiceStatus(panel);
+    
+    document.body.appendChild(panel);
+    console.log('Draggable panel created successfully');
+  }
+
+  async updateThumbnailGallery(panel) {
+    try {
+      // If no panel provided, try to find the gallery in the simple controls
+      if (!panel) {
+        const gallery = document.getElementById('tooltip-thumbnail-gallery');
+        if (gallery) {
+          panel = gallery;
+        } else {
+          console.log('No panel or gallery found for thumbnail update');
+          return;
+        }
+      }
+
+      const thumbnailContainer = panel.querySelector('#thumbnail-container');
+      const screenshotCount = panel.querySelector('#screenshot-count');
+      const noScreenshots = panel.querySelector('#no-screenshots');
+      
+      if (!thumbnailContainer || !screenshotCount || !noScreenshots) {
+        console.log('Required gallery elements not found');
+        return;
+      }
+      
+      // Get stored screenshots from IndexedDB via background script
+      const response = await chrome.runtime.sendMessage({ action: 'getStoredScreenshots' });
+      
+      if (response && response.success && response.data && response.data.length > 0) {
+        const screenshots = response.data;
+        
+        // Update count
+        screenshotCount.textContent = `${screenshots.length} screenshots`;
+        
+        // Clear container
+        thumbnailContainer.innerHTML = '';
+        noScreenshots.style.display = 'none';
+        
+        // Add thumbnails
+        screenshots.forEach((screenshot, index) => {
+          const thumbnail = document.createElement('div');
+          thumbnail.style.cssText = `
+            width: 100%;
+            height: 60px;
+            background-image: url('${screenshot.dataUrl}');
+            background-size: cover;
+            background-position: center;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+          `;
+          
+          // Add overlay with element type
+          const overlay = document.createElement('div');
+          overlay.style.cssText = `
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            font-size: 10px;
+            padding: 2px 4px;
+            text-align: center;
+          `;
+          overlay.textContent = screenshot.elementType || 'element';
+          
+          thumbnail.appendChild(overlay);
+          
+          // Add click handler to show full screenshot
+          thumbnail.addEventListener('click', () => {
+            this.showFullScreenshot(screenshot);
+          });
+          
+          thumbnailContainer.appendChild(thumbnail);
+        });
+      } else {
+        // No screenshots
+        screenshotCount.textContent = '0 screenshots';
+        thumbnailContainer.innerHTML = '';
+        noScreenshots.style.display = 'block';
+      }
+    } catch (error) {
+      console.error('Failed to update thumbnail gallery:', error);
+    }
+  }
+
+  async updateServiceStatus(panel) {
+    try {
+      const serviceStatus = panel.querySelector('#service-status');
+      const serviceDetails = panel.querySelector('#service-details');
+      
+      if (!serviceStatus || !serviceDetails) return;
+      
+      const response = await chrome.runtime.sendMessage({ action: 'checkServiceStatus' });
+      
+      if (response && response.success) {
+        const status = response.data;
+        if (status.available) {
+          serviceStatus.textContent = '✅ Online';
+          serviceDetails.textContent = `Playwright service running on localhost:3001`;
+        } else {
+          serviceStatus.textContent = '❌ Offline';
+          serviceDetails.textContent = `Service error: ${status.error || 'Unknown'}`;
+        }
+      } else {
+        serviceStatus.textContent = '❌ Error';
+        serviceDetails.textContent = 'Failed to check service status';
+      }
+    } catch (error) {
+      console.error('Failed to update service status:', error);
+      const serviceStatus = panel.querySelector('#service-status');
+      const serviceDetails = panel.querySelector('#service-details');
+      if (serviceStatus) serviceStatus.textContent = '❌ Error';
+      if (serviceDetails) serviceDetails.textContent = 'Failed to check service status';
+    }
+  }
+
+  showScreenshotModal(screenshotDataUrl, metadata) {
+    // Create modal to show full screenshot without opening new windows
+    const modal = document.createElement('div');
+    modal.className = 'tooltip-screenshot-modal';
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2147483648;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+    `;
+    
+    const container = document.createElement('div');
+    container.style.cssText = `
+      position: relative;
+      max-width: 95%;
+      max-height: 95%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    `;
+    
+    const img = document.createElement('img');
+    img.src = screenshotDataUrl;
+    img.style.cssText = `
+      max-width: 100%;
+      max-height: 80vh;
+      border-radius: 12px;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+      object-fit: contain;
+    `;
+    
+    // Add metadata info if available
+    if (metadata) {
+      const info = document.createElement('div');
+      info.style.cssText = `
+        margin-top: 15px;
+        padding: 15px 20px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        color: white;
+        font-size: 14px;
+        text-align: center;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        max-width: 100%;
+      `;
+      
+      const title = document.createElement('div');
+      title.style.cssText = 'font-weight: 600; margin-bottom: 5px;';
+      title.textContent = metadata.title || 'Screenshot Preview';
+      
+      const url = document.createElement('div');
+      url.style.cssText = 'font-size: 12px; opacity: 0.8; word-break: break-all;';
+      url.textContent = metadata.url || '';
+      
+      info.appendChild(title);
+      if (metadata.url) info.appendChild(url);
+      container.appendChild(info);
+    }
+    
+    // Add close button
+    const closeBtn = document.createElement('button');
+    closeBtn.innerHTML = '×';
+    closeBtn.style.cssText = `
+      position: absolute;
+      top: -15px;
+      right: -15px;
+      width: 40px;
+      height: 40px;
+      background: rgba(244, 67, 54, 0.9);
+      border: none;
+      border-radius: 50%;
+      color: white;
+      font-size: 20px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    `;
+    
+    container.appendChild(img);
+    container.appendChild(closeBtn);
+    modal.appendChild(container);
+    document.body.appendChild(modal);
+    
+    // Close on click outside or close button
+    const closeModal = () => {
+      if (modal.parentNode) {
+        document.body.removeChild(modal);
+      }
+    };
+    
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+    
+    closeBtn.addEventListener('click', closeModal);
+    
+    // Close on Escape key
+    const handleKeydown = (e) => {
+      if (e.key === 'Escape') {
+        closeModal();
+        document.removeEventListener('keydown', handleKeydown);
+      }
+    };
+    document.addEventListener('keydown', handleKeydown);
+  }
+
+  showFullScreenshot(screenshot) {
+    // Use the new modal method
+    this.showScreenshotModal(screenshot.dataUrl, screenshot.metadata);
+  }
 }
 
 // Initialize content script when DOM is ready
 console.log('ToolTip Content Script loading...');
 
+let contentScriptInstance = null;
+
 // Force initialization after a short delay to ensure DOM is ready
 setTimeout(() => {
   console.log('Initializing ToolTip Content Script...');
   try {
-    new ToolTipContentScript();
+    contentScriptInstance = new ToolTipContentScript();
     console.log('ToolTip Content Script initialized successfully');
   } catch (error) {
     console.error('Failed to initialize ToolTip Content Script:', error);
   }
 }, 100);
+
+// Add message listener
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (contentScriptInstance) {
+    return contentScriptInstance.handleMessage(request, sender, sendResponse);
+  }
+  return false;
+});
 
 // Also try immediate initialization if DOM is already ready
 if (document.readyState === 'loading') {

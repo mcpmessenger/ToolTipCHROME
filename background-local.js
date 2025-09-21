@@ -24,6 +24,12 @@ class ToolTipBackground {
     this.dbVersion = 1;
     this.db = null;
     
+    // Rate limiting for screenshot captures
+    this.lastScreenshotTime = 0;
+    this.minScreenshotInterval = 2000; // Minimum 2 seconds between screenshots
+    this.screenshotQueue = [];
+    this.processingScreenshot = false;
+    
     this.init();
   }
 
@@ -126,13 +132,23 @@ class ToolTipBackground {
           break;
 
         case 'checkServiceStatus':
-          const status = await this.checkServiceStatus();
-          sendResponse({ success: true, data: status });
+          // Always return success since we use Chrome's native API
+          sendResponse({ success: true, data: { available: true, service: 'chrome_native' } });
           break;
 
         case 'startFreshCrawl':
           const crawlResult = await this.startFreshCrawl();
           sendResponse({ success: true, data: crawlResult });
+          break;
+
+        case 'getStoredScreenshots':
+          const screenshots = await this.getStoredScreenshots();
+          sendResponse({ success: true, data: screenshots });
+          break;
+
+        case 'getExistingScreenshot':
+          const existingScreenshot = await this.getExistingScreenshot(request.data.url);
+          sendResponse({ success: true, data: existingScreenshot });
           break;
 
         default:
@@ -382,11 +398,12 @@ class ToolTipBackground {
 
   async captureWithPlaywrightService(elementData) {
     try {
-      console.log('🎭 Attempting Playwright service capture for:', elementData.url);
+      console.log('🎭 Capturing screenshot using Playwright service for:', elementData.url);
       
       // Check if local service is available
       const healthCheck = await fetch('http://localhost:3001/health', {
-        method: 'GET'
+        method: 'GET',
+        signal: AbortSignal.timeout(3000) // 3 second timeout
       });
 
       if (!healthCheck.ok) {
@@ -400,7 +417,8 @@ class ToolTipBackground {
         url: elementData.url,
         selector: elementData.selector || 'body',
         elementType: elementData.tag,
-        maxScreenshots: 1
+        maxScreenshots: 1,
+        clickElement: true // Click the element and capture result
       };
 
       console.log('📤 Sending request to Playwright service:', requestBody);
@@ -410,7 +428,8 @@ class ToolTipBackground {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify(requestBody),
+        signal: AbortSignal.timeout(10000) // 10 second timeout
       });
 
       console.log('📥 Playwright service response status:', response.status);
@@ -431,7 +450,7 @@ class ToolTipBackground {
       if (result.success && result.screenshot) {
         // Store in IndexedDB
         const screenshotId = await this.storeScreenshot({
-          url: elementData.url,
+          url: elementData.url + '#' + elementData.selector,
           dataUrl: result.screenshot,
           metadata: result.metadata,
           timestamp: result.timestamp || Date.now(),
@@ -489,27 +508,31 @@ class ToolTipBackground {
         return playwrightResult;
       }
 
-      // Fallback to chrome.tabs API
+      // Fallback to chrome.tabs API - use existing tab instead of creating new ones
       console.log('Playwright service unavailable for link preview, using chrome.tabs fallback');
-      const newTab = await chrome.tabs.create({ 
-        url: linkData.url, 
-        active: false 
-      });
+      
+      // Get current active tab instead of creating new one
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tabs[0]) {
+        throw new Error('No active tab found');
+      }
 
-      // Wait for the page to load
-      await this.waitForTabLoad(newTab.id, settings.localScreenshots.waitTime);
+      const tab = tabs[0];
+      
+      // Navigate to the link URL in the current tab (if different)
+      if (tab.url !== linkData.url) {
+        await chrome.tabs.update(tab.id, { url: linkData.url });
+        await this.waitForTabLoad(tab.id, settings.localScreenshots.waitTime);
+      }
 
-      // Capture screenshot
-      const dataUrl = await chrome.tabs.captureVisibleTab(newTab.windowId, {
+      // Capture screenshot of current tab
+      const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
         format: 'png',
         quality: 90
       });
 
       // Get page metadata
-      const metadata = await this.getPageMetadata(newTab.id);
-
-      // Close the temporary tab
-      await chrome.tabs.remove(newTab.id);
+      const metadata = await this.getPageMetadata(tab.id);
 
       // Store screenshot in IndexedDB
       const screenshotId = await this.storeScreenshot({
@@ -671,7 +694,47 @@ class ToolTipBackground {
       return { success: false, error: 'Local screenshots disabled' };
     }
 
+    return new Promise((resolve, reject) => {
+      // Add to queue instead of processing immediately
+      this.screenshotQueue.push({ elementData, resolve, reject });
+      this.processScreenshotQueue();
+    });
+  }
+
+  async processScreenshotQueue() {
+    if (this.processingScreenshot || this.screenshotQueue.length === 0) {
+      return;
+    }
+
+    this.processingScreenshot = true;
+
+    while (this.screenshotQueue.length > 0) {
+      const { elementData, resolve, reject } = this.screenshotQueue.shift();
+      
+      try {
+        // Check rate limiting
+        const now = Date.now();
+        const timeSinceLastScreenshot = now - this.lastScreenshotTime;
+        if (timeSinceLastScreenshot < this.minScreenshotInterval) {
+          const waitTime = this.minScreenshotInterval - timeSinceLastScreenshot;
+          console.log(`⏳ Rate limiting: waiting ${waitTime}ms before next screenshot`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+        this.lastScreenshotTime = Date.now();
+
+        const result = await this.processScreenshotCapture(elementData);
+        resolve(result);
+      } catch (error) {
+        reject(error);
+      }
+    }
+
+    this.processingScreenshot = false;
+  }
+
+  async processScreenshotCapture(elementData) {
     try {
+
       // Check if we already have a recent screenshot for this element
       const existingScreenshot = await this.getExistingScreenshot(elementData.url + '#' + elementData.selector);
       if (existingScreenshot) {
@@ -684,57 +747,148 @@ class ToolTipBackground {
         };
       }
 
-      // Request screenshot from local Playwright service
-      const response = await fetch('http://localhost:3001/screenshot', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          url: elementData.url,
-          selector: elementData.selector,
-          elementType: elementData.tag || 'unknown',
-          maxScreenshots: 25
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Screenshot service error: ${response.status}`);
-      }
-
-      const result = await response.json();
+      // Use Chrome's native screenshot API (self-contained)
+      console.log('📸 Capturing screenshot using Chrome API for:', elementData.url);
       
-      if (result.success) {
-        // Store screenshot in IndexedDB
-        const screenshotId = await this.storeScreenshot({
-          url: elementData.url + '#' + elementData.selector,
-          dataUrl: `data:image/png;base64,${result.screenshot}`,
-          metadata: result.metadata,
-          timestamp: Date.now(),
-          elementType: elementData.tag || 'unknown',
-          source: 'playwright'
-        });
-
-        return {
-          success: true,
-          screenshot: `data:image/png;base64,${result.screenshot}`,
-          metadata: result.metadata,
-          timestamp: Date.now(),
-          screenshotId: screenshotId,
-          cached: result.cached || false
-        };
+      // For links, navigate to the URL and capture
+      if (elementData.tag === 'a' && elementData.url) {
+        return await this.captureLinkScreenshot(elementData);
       } else {
-        throw new Error(result.error || 'Screenshot capture failed');
+        // For other elements, capture current page
+        return await this.captureCurrentPageScreenshot(elementData);
       }
 
     } catch (error) {
-      console.error('Playwright screenshot capture failed:', error);
+      console.error('Chrome screenshot capture failed:', error);
       return { 
         success: false, 
         error: error.message,
-        fallback: 'Screenshot capture unavailable - make sure the screenshot service is running on localhost:3001'
+        fallback: 'Screenshot capture unavailable'
       };
     }
+  }
+
+  async captureLinkScreenshot(elementData) {
+    try {
+      // Use current active tab instead of creating new one
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tabs[0]) {
+        throw new Error('No active tab found');
+      }
+
+      const tab = tabs[0];
+      
+      // Check if we have permission to capture this tab
+      if (!tab.url || (tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://'))) {
+        throw new Error('Cannot capture screenshot of this page type');
+      }
+      
+      // Navigate to the link URL in the current tab (if different)
+      if (tab.url !== elementData.url) {
+        await chrome.tabs.update(tab.id, { url: elementData.url });
+        await this.waitForTabLoad(tab.id, 3000);
+      }
+
+      // Add a longer delay to respect rate limits
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Capture screenshot of current tab
+      const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
+        format: 'png',
+        quality: 90
+      });
+
+      // Get metadata
+      const metadata = await this.getPageMetadata(tab.id);
+
+      // Store in IndexedDB
+      const screenshotId = await this.storeScreenshot({
+        url: elementData.url + '#' + elementData.selector,
+        dataUrl: dataUrl,
+        metadata: metadata,
+        timestamp: Date.now(),
+        elementType: elementData.tag || 'unknown',
+        source: 'chrome_native'
+      });
+
+      return {
+        success: true,
+        screenshot: dataUrl,
+        metadata: metadata,
+        timestamp: Date.now(),
+        screenshotId: screenshotId,
+        cached: false
+      };
+
+    } catch (error) {
+      throw new Error(`Link screenshot failed: ${error.message}`);
+    }
+  }
+
+  async captureCurrentPageScreenshot(elementData) {
+    try {
+      // Get current active tab
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tabs[0]) {
+        throw new Error('No active tab found');
+      }
+
+      const tab = tabs[0];
+
+      // Check if we have permission to capture this tab
+      if (!tab.url || (tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://'))) {
+        throw new Error('Cannot capture screenshot of this page type');
+      }
+
+      // Add a longer delay to respect rate limits
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Capture visible tab
+      const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
+        format: 'png',
+        quality: 90
+      });
+
+      // Get metadata
+      const metadata = await this.getPageMetadata(tab.id);
+
+      // Store in IndexedDB
+      const screenshotId = await this.storeScreenshot({
+        url: elementData.url + '#' + elementData.selector,
+        dataUrl: dataUrl,
+        metadata: metadata,
+        timestamp: Date.now(),
+        elementType: elementData.tag || 'unknown',
+        source: 'chrome_native'
+      });
+
+      return {
+        success: true,
+        screenshot: dataUrl,
+        metadata: metadata,
+        timestamp: Date.now(),
+        screenshotId: screenshotId,
+        cached: false
+      };
+
+    } catch (error) {
+      throw new Error(`Current page screenshot failed: ${error.message}`);
+    }
+  }
+
+  async waitForTabLoad(tabId, waitTime) {
+    return new Promise((resolve) => {
+      const checkTab = () => {
+        chrome.tabs.get(tabId, (tab) => {
+          if (tab && tab.status === 'complete') {
+            setTimeout(resolve, waitTime);
+          } else {
+            setTimeout(checkTab, 500);
+          }
+        });
+      };
+      checkTab();
+    });
   }
 
   async cleanupOldScreenshots() {
@@ -784,7 +938,7 @@ class ToolTipBackground {
         return {
           available: true,
           status: 'running',
-          service: data.service || 'ToolTip Screenshot Service',
+          service: data.service || 'Playwright Screenshot Service',
           timestamp: data.timestamp
         };
       } else {
@@ -1050,6 +1204,28 @@ class ToolTipBackground {
     }
     
     return element.tagName.toLowerCase();
+  }
+
+  async getStoredScreenshots() {
+    if (!this.db) {
+      await this.initializeDatabase();
+    }
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction(['screenshots'], 'readonly');
+      const store = transaction.objectStore('screenshots');
+      const request = store.getAll();
+
+      request.onsuccess = () => {
+        // Sort by timestamp (newest first)
+        const screenshots = request.result.sort((a, b) => b.timestamp - a.timestamp);
+        resolve(screenshots);
+      };
+
+      request.onerror = () => {
+        reject(request.error);
+      };
+    });
   }
 }
 

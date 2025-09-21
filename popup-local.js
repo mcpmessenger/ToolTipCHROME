@@ -506,20 +506,36 @@ class ToolTipPopup {
               </div>
               <div style="padding: 20px;">
                 <div style="background: rgba(76, 175, 80, 0.2); border: 1px solid rgba(76, 175, 80, 0.5); padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: center;">
-                  <strong>✅ ToolTip Companion is active with local screenshots</strong>
+                  <strong>✅ ToolTip Companion is active with Playwright screenshots</strong>
                 </div>
+                
+                <!-- Fresh Crawl Button -->
+                <button id="panel-crawl-btn" style="width: 100%; padding: 12px 16px; background: linear-gradient(135deg, #28a745 0%, #20c997 100%); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; color: white; font-size: 14px; font-weight: 500; cursor: pointer; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);">
+                  🕷️ Fresh Crawl - Click Links & Capture Screenshots
+                </button>
+                
+                <!-- Thumbnail Bank -->
                 <div style="background: rgba(60, 60, 60, 0.3); border: 1px solid rgba(120, 120, 120, 0.3); border-radius: 8px; padding: 12px; margin-bottom: 15px;">
-                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: 13px; font-weight: 500;">
-                    <span>🔧 Local Service Status</span>
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; font-size: 13px; font-weight: 500;">
+                    <span>📸 Screenshot Gallery</span>
+                    <span id="screenshot-count" style="font-size: 11px; opacity: 0.7;">0 screenshots</span>
                   </div>
-                  <div style="font-size: 12px; opacity: 0.8;">✅ ToolTip Screenshot Service is running</div>
+                  <div id="thumbnail-container" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; max-height: 200px; overflow-y: auto;">
+                    <!-- Thumbnails will be added here -->
+                  </div>
+                  <div id="no-screenshots" style="text-align: center; font-size: 12px; opacity: 0.6; padding: 20px;">
+                    No screenshots yet. Click "Fresh Crawl" to start capturing!
+                  </div>
                 </div>
-                <button style="width: 100%; padding: 12px 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; color: white; font-size: 14px; font-weight: 500; cursor: pointer; margin-bottom: 10px;">
-                  🧪 Test Tooltips - Check Console
-                </button>
-                <button style="width: 100%; padding: 12px 16px; background: linear-gradient(135deg, #28a745 0%, #20c997 100%); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; color: white; font-size: 14px; font-weight: 500; cursor: pointer;">
-                  🔍 Fresh Crawl - Scan Entire Page
-                </button>
+                
+                <!-- Status -->
+                <div style="background: rgba(60, 60, 60, 0.3); border: 1px solid rgba(120, 120, 120, 0.3); border-radius: 8px; padding: 12px;">
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: 13px; font-weight: 500;">
+                    <span>🔧 Playwright Service Status</span>
+                    <span id="service-status" style="font-size: 11px; opacity: 0.7;">Checking...</span>
+                  </div>
+                  <div id="service-details" style="font-size: 12px; opacity: 0.8;">Loading service status...</div>
+                </div>
               </div>
             `;
             
@@ -556,6 +572,33 @@ class ToolTipPopup {
                 panel.style.zIndex = '2147483647';
               }
             });
+            
+            // Add button functionality
+            const crawlBtn = panel.querySelector('#panel-crawl-btn');
+            if (crawlBtn) {
+              crawlBtn.addEventListener('click', async () => {
+                crawlBtn.disabled = true;
+                crawlBtn.textContent = '🕷️ Crawling...';
+                
+                try {
+                  // Send message to background script to start crawl
+                  const response = await chrome.runtime.sendMessage({ action: 'startFreshCrawl' });
+                  if (response && response.success) {
+                    crawlBtn.textContent = '✅ Crawl Complete!';
+                  } else {
+                    crawlBtn.textContent = '❌ Crawl Failed';
+                  }
+                } catch (error) {
+                  console.error('Crawl failed:', error);
+                  crawlBtn.textContent = '❌ Crawl Error';
+                } finally {
+                  setTimeout(() => {
+                    crawlBtn.disabled = false;
+                    crawlBtn.textContent = '🕷️ Fresh Crawl - Click Links & Capture Screenshots';
+                  }, 3000);
+                }
+              });
+            }
             
             document.body.appendChild(panel);
             return { success: true };

@@ -41,32 +41,9 @@
             background: rgba(80, 80, 80, 0.3);
             backdrop-filter: blur(10px);
             border-bottom: 1px solid rgba(120, 120, 120, 0.3);
-            cursor: grab;
-            user-select: none;
             position: relative;
-            -webkit-app-region: drag;
         }
 
-        .header:active {
-            cursor: grabbing;
-        }
-
-        .drag-handle {
-            position: absolute;
-            top: 8px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 40px;
-            height: 6px;
-            background: rgba(255, 255, 255, 0.4);
-            border-radius: 3px;
-            opacity: 0.7;
-            transition: opacity 0.3s ease;
-        }
-
-        .header:hover .drag-handle {
-            opacity: 1;
-        }
 
         .header h1 {
             font-size: 18px;
@@ -428,7 +405,6 @@
 </head>
 <body>
     <div class="header" id="popupHeader">
-        <div class="drag-handle"></div>
         <h1>ToolTip Companion</h1>
         <p>Beautiful interactive tooltips for any webpage</p>
         <div class="privacy-badge">
@@ -442,15 +418,6 @@
             <span id="status-text">Loading...</span>
         </div>
 
-        <div id="service-status" class="service-status" style="display: none;">
-            <div class="service-status-header">
-                <span>🔧 Local Service Status</span>
-                <button id="refreshServiceStatus" class="refresh-btn">🔄</button>
-            </div>
-            <div id="service-status-content" class="service-status-content">
-                <span id="service-status-text">Checking...</span>
-            </div>
-        </div>
 
         <div class="setting-group">
             <label class="setting-label">
