@@ -737,7 +737,7 @@ class ToolTipContentScript {
       position: absolute;
       left: ${position.x}px;
       top: ${position.y}px;
-      width: 320px;
+      width: 400px;
       height: auto;
       opacity: 0;
       transform: translateY(5px);
@@ -790,34 +790,44 @@ class ToolTipContentScript {
       content.className += ' error';
       content.textContent = data.content;
     } else {
-      // Main content
+      // Main content - simplified and minimized
       const mainText = document.createElement('div');
+      mainText.style.cssText = `
+        font-size: 12px;
+        opacity: 0.7;
+        color: #b0b0b0;
+        margin-bottom: 8px;
+        text-align: center;
+      `;
       mainText.textContent = data.content;
       content.appendChild(mainText);
 
-      // Add description if available
-      if (data.description) {
-        const desc = document.createElement('div');
-        desc.style.cssText = `
-          margin-top: 8px;
-          font-size: 13px;
-          opacity: 0.8;
-          color: #d0d0d0;
-          line-height: 1.4;
-        `;
-        desc.textContent = data.description;
-        content.appendChild(desc);
-      }
+      // Hide description to focus on screenshot
+      // Description removed for cleaner look
 
       // Add screenshot if available
       if (data.screenshot) {
         const screenshotDiv = document.createElement('div');
         screenshotDiv.className = 'tooltip-companion-screenshot';
+        screenshotDiv.style.cssText = `
+          width: 100%;
+          text-align: center;
+          margin: 8px 0;
+        `;
         
         const img = document.createElement('img');
         img.src = data.screenshot;
         img.alt = data.metadata?.title || 'Screenshot preview';
         img.title = 'Click to view full size';
+        img.style.cssText = `
+          width: 100%;
+          max-width: 380px;
+          height: auto;
+          max-height: 300px;
+          object-fit: contain;
+          border-radius: 8px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        `;
         
         // Handle image loading errors
         img.addEventListener('error', () => {
@@ -831,49 +841,46 @@ class ToolTipContentScript {
         });
         img.style.cursor = 'zoom-in';
         
-        // Add status indicators
+        // Add minimal status indicators
         const statusContainer = document.createElement('div');
         statusContainer.style.cssText = `
           position: absolute;
-          top: 8px;
-          right: 8px;
+          top: 4px;
+          right: 4px;
           display: flex;
-          flex-direction: column;
-          gap: 4px;
+          gap: 2px;
           pointer-events: none;
         `;
         
-        // Cached indicator
+        // Minimal cached indicator
         if (data.cached) {
           const cachedIndicator = document.createElement('div');
           cachedIndicator.style.cssText = `
-            background: rgba(76, 175, 80, 0.9);
+            background: rgba(76, 175, 80, 0.8);
             color: white;
-            font-size: 10px;
-            padding: 4px 8px;
-            border-radius: 12px;
+            font-size: 8px;
+            padding: 2px 4px;
+            border-radius: 4px;
             font-weight: 500;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
           `;
-          cachedIndicator.textContent = 'Cached';
+          cachedIndicator.textContent = '✓';
           statusContainer.appendChild(cachedIndicator);
         }
         
-        // Source indicator
+        // Minimal source indicator
         if (data.source) {
           const sourceIndicator = document.createElement('div');
           sourceIndicator.style.cssText = `
-            background: rgba(33, 150, 243, 0.9);
+            background: rgba(33, 150, 243, 0.8);
             color: white;
-            font-size: 10px;
-            padding: 4px 8px;
-            border-radius: 12px;
+            font-size: 8px;
+            padding: 2px 4px;
+            border-radius: 4px;
             font-weight: 500;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
           `;
-          const sourceText = data.source === 'stored' ? 'Stored' : 
-                           data.source === 'playwright' ? 'Playwright' : 
-                           data.source === 'chrome_native' ? 'Chrome' : 'Unknown';
+          const sourceText = data.source === 'stored' ? 'S' : 
+                           data.source === 'playwright' ? 'P' : 
+                           data.source === 'chrome_native' ? 'C' : '?';
           sourceIndicator.textContent = sourceText;
           statusContainer.appendChild(sourceIndicator);
         }
@@ -882,41 +889,23 @@ class ToolTipContentScript {
         screenshotDiv.appendChild(statusContainer);
         content.appendChild(screenshotDiv);
         
-        // Add metadata info below screenshot
-        if (data.metadata) {
+        // Minimize metadata - only show essential info
+        if (data.metadata && data.metadata.title) {
           const metaDiv = document.createElement('div');
           metaDiv.style.cssText = `
-            margin-top: 8px;
-            padding: 8px 12px;
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 8px;
-            font-size: 12px;
-            color: #d0d0d0;
-            border-left: 3px solid rgba(255, 255, 255, 0.3);
+            margin-top: 4px;
+            font-size: 10px;
+            color: #888;
+            text-align: center;
+            opacity: 0.7;
           `;
-          
-          const metaInfo = [];
-          if (data.metadata.title) metaInfo.push(`Title: ${data.metadata.title}`);
-          if (data.metadata.description) metaInfo.push(`Description: ${data.metadata.description.substring(0, 100)}...`);
-          if (data.timestamp) metaInfo.push(`Captured: ${new Date(data.timestamp).toLocaleString()}`);
-          
-          metaDiv.textContent = metaInfo.join(' • ');
+          metaDiv.textContent = data.metadata.title;
           content.appendChild(metaDiv);
         }
       }
       
-      // Add metadata if available
-      if (data.confidence && !data.error) {
-        const meta = document.createElement('div');
-        meta.style.cssText = `
-          margin-top: 8px;
-          font-size: 12px;
-          opacity: 0.7;
-          color: #b0b0b0;
-        `;
-        meta.textContent = `Confidence: ${Math.round(data.confidence * 100)}% • Source: ${data.source}`;
-        content.appendChild(meta);
-      }
+      // Hide confidence/source info to focus on screenshot
+      // Removed for cleaner, screenshot-focused design
 
       // Add local storage indicator for screenshots
       if (data.screenshot && data.linkPreview) {
@@ -977,29 +966,37 @@ class ToolTipContentScript {
   }
 
   calculateTooltipPosition(elementRect) {
-    const tooltipWidth = 320;
-    const tooltipHeight = 120;
-    const margin = 15;
+    const tooltipWidth = 400;
+    const tooltipHeight = 350;
+    const margin = 20;
 
-    // Center tooltip horizontally relative to element
-    let x = elementRect.left + elementRect.width / 2 - tooltipWidth / 2;
-    // Position tooltip directly below element (not above)
-    let y = elementRect.bottom + margin;
+    // Position tooltip adjacent to the element
+    let x, y;
+    
+    // Try to position to the right of the element first
+    if (elementRect.right + tooltipWidth + margin < window.innerWidth) {
+      x = elementRect.right + margin;
+      y = elementRect.top;
+    }
+    // Try to position to the left of the element
+    else if (elementRect.left - tooltipWidth - margin > 0) {
+      x = elementRect.left - tooltipWidth - margin;
+      y = elementRect.top;
+    }
+    // Fallback: position below element
+    else {
+      x = elementRect.left + elementRect.width / 2 - tooltipWidth / 2;
+      y = elementRect.bottom + margin;
+    }
 
     // Adjust for viewport boundaries
     if (x < margin) x = margin;
     if (x + tooltipWidth > window.innerWidth - margin) {
       x = window.innerWidth - tooltipWidth - margin;
     }
-
-    // If no space below, show above element
-    if (y + tooltipHeight > window.innerHeight + window.scrollY - margin) {
-      y = elementRect.top - tooltipHeight - margin;
-    }
-
-    // Ensure tooltip stays within viewport
-    if (y < window.scrollY + margin) {
-      y = window.scrollY + margin;
+    if (y < margin) y = margin;
+    if (y + tooltipHeight > window.innerHeight - margin) {
+      y = window.innerHeight - tooltipHeight - margin;
     }
 
     return { x: x + window.scrollX, y: y + window.scrollY };
@@ -1045,34 +1042,44 @@ class ToolTipContentScript {
       content.className = 'tooltip-companion-content';
       content.innerHTML = '';
       
-      // Main content
+      // Main content - simplified and minimized
       const mainText = document.createElement('div');
+      mainText.style.cssText = `
+        font-size: 12px;
+        opacity: 0.7;
+        color: #b0b0b0;
+        margin-bottom: 8px;
+        text-align: center;
+      `;
       mainText.textContent = data.content;
       content.appendChild(mainText);
 
-      // Add description if available
-      if (data.description) {
-        const desc = document.createElement('div');
-        desc.style.cssText = `
-          margin-top: 8px;
-          font-size: 13px;
-          opacity: 0.8;
-          color: #d0d0d0;
-          line-height: 1.4;
-        `;
-        desc.textContent = data.description;
-        content.appendChild(desc);
-      }
+      // Hide description to focus on screenshot
+      // Description removed for cleaner look
 
       // Add screenshot if available
       if (data.screenshot) {
         const screenshotDiv = document.createElement('div');
         screenshotDiv.className = 'tooltip-companion-screenshot';
+        screenshotDiv.style.cssText = `
+          width: 100%;
+          text-align: center;
+          margin: 8px 0;
+        `;
         
         const img = document.createElement('img');
         img.src = data.screenshot;
         img.alt = data.metadata?.title || 'Screenshot preview';
         img.title = 'Click to view full size';
+        img.style.cssText = `
+          width: 100%;
+          max-width: 380px;
+          height: auto;
+          max-height: 300px;
+          object-fit: contain;
+          border-radius: 8px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        `;
         
         // Handle image loading errors
         img.addEventListener('error', () => {
